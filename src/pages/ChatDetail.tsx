@@ -32,7 +32,9 @@ export default function ChatDetail() {
       setChatName(chat.type === 'group' ? (chat.name || '群聊') : (otherMember?.username || '用户'));
       setChatAvatar(chat.type === 'group' ? (chat.avatar || '') : (otherMember?.avatar || ''));
     }
+  }, [locationState, currentUser]);
 
+  useEffect(() => {
     const fetchMessages = async () => {
       if (!id) {
         setError('聊天不存在');
@@ -82,7 +84,7 @@ export default function ChatDetail() {
       } catch {}
     };
     markAsRead();
-  }, [id, currentUser, locationState]);
+  }, [id]);
 
   const handleDeleteMessage = async (messageId: string) => {
     if (!id) return;
