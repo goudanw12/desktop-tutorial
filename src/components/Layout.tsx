@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Compass, PlusCircle, MessageCircle, Bell, Settings, User, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -19,8 +19,9 @@ const navItems = [
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
-  const { theme } = useThemeStore();
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const theme = useThemeStore((s) => s.theme);
   const [hasMessageUnread, setHasMessageUnread] = useState(false);
   const [hasNotificationUnread, setHasNotificationUnread] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);

@@ -17,7 +17,7 @@ import PostDetail from '@/pages/PostDetail';
 import Topic from '@/pages/Topic';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuthStore();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -25,7 +25,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuthStore();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   if (isAuthenticated) {
     return <Navigate to="/" replace />;
   }
@@ -33,7 +33,8 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppInit({ children }: { children: React.ReactNode }) {
-  const { token, fetchMe } = useAuthStore();
+  const token = useAuthStore((s) => s.token);
+  const fetchMe = useAuthStore((s) => s.fetchMe);
 
   useEffect(() => {
     if (token) {

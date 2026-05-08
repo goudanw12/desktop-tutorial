@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { Search, MessageSquarePlus, X, User, Trash2, EyeOff, Eye } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Search, MessageSquarePlus, X, User, Trash2, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { get, post as apiPost, del } from '@/lib/api';
@@ -34,7 +34,7 @@ function formatTime(dateStr: string) {
 export default function Messages() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user: currentUser } = useAuthStore();
+  const currentUserId = useAuthStore((s) => s.user?.id);
   const [searchQuery, setSearchQuery] = useState('');
   const [chats, setChats] = useState<ChatItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,17 +42,15 @@ export default function Messages() {
   const [searchUsers, setSearchUsers] = useState<UserProfile[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [menuChatId, setMenuChatId] = useState<string | null>(null);
-
-  const locationState = location.state as { startChatWith?: string } | null;
-  const startChatWith = locationState?.startChatWith;
+  const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
   const startChatHandledRef = useRef(false);
 
-  const fetchChats = async () => {
+  const fetchChats = useCallback(async () => {
     try {
       const res = await get<{ success: boolean; data: any[] }>('/chats');
       const mapped = (res.data || []).map((chat: any) => {
         const otherMember = (chat.members || []).find(
-          (m: any) => m.id !== currentUser?.id
+          (m: any) => m.id !== currentUserId
         );
         return {
           id: chat.id,
@@ -71,24 +69,31 @@ export default function Messages() {
       setChats([]);
     }
     setIsLoading(false);
-  };
+  }, [currentUserId]);
 
   useEffect(() => {
     fetchChats();
     const handleFocus = () => fetchChats();
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser?.id]);
+  }, [fetchChats]);
 
   useEffect(() => {
-    if (startChatWith && !startChatHandledRef.current) {
+    const state = location.state as { startChatWith?: string } | null;
+    if (state?.startChatWith && !startChatHandledRef.current) {
       startChatHandledRef.current = true;
-      handleStartChat(startChatWith);
-      navigate('/messages', { replace: true, state: {} });
+      const userId = state.startChatWith;
+      apiPost<{ success: boolean; data: any }>('/chats', {
+        type: 'private',
+        memberIds: [userId],
+      }).then((res) => {
+        setShowNewChat(false);
+        setSearchUsers([]);
+        dispatchRefreshUnread();
+        navigate(`/chat/${res.data.id}`, { state: { chat: res.data }, replace: true });
+      }).catch(() => {});
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startChatWith]);
+  }, [location.state, navigate]);
 
   const handleSearchUsers = async (query: string) => {
     if (!query.trim()) {
@@ -132,26 +137,22 @@ export default function Messages() {
   const handleHideChat = async (chatId: string) => {
     try {
       await apiPost(`/chats/${chatId}/hide`, {});
-      setChats((prev) => prev.filter((c) => c.id !== chatId));
-      setMenuChatId(null);
-      dispatchRefreshUnread();
-      if (location.pathname === `/chat/${chatId}`) {
-        navigate('/messages', { replace: true });
-      }
     } catch {}
+    setChats((prev) => prev.filter((c) => c.id !== chatId));
+    setMenuChatId(null);
+    dispatchRefreshUnread();
   };
 
   const handleDeleteChat = async (chatId: string) => {
-    if (!confirm('确定要删除这个聊天吗？此操作不可撤销。')) return;
+    if (deletingChatId) return;
+    setDeletingChatId(chatId);
     try {
       await del(`/chats/${chatId}`);
-      setChats((prev) => prev.filter((c) => c.id !== chatId));
-      setMenuChatId(null);
-      dispatchRefreshUnread();
-      if (location.pathname === `/chat/${chatId}`) {
-        navigate('/messages', { replace: true });
-      }
     } catch {}
+    setChats((prev) => prev.filter((c) => c.id !== chatId));
+    setMenuChatId(null);
+    setDeletingChatId(null);
+    dispatchRefreshUnread();
   };
 
   const filteredChats = chats.filter((chat) =>
@@ -259,10 +260,11 @@ export default function Messages() {
                   </button>
                   <button
                     onClick={() => handleDeleteChat(chat.id)}
-                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    disabled={deletingChatId === chat.id}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
                   >
                     <Trash2 className="w-4 h-4" />
-                    删除聊天
+                    {deletingChatId === chat.id ? '删除中...' : '删除聊天'}
                   </button>
                 </div>
               )}
