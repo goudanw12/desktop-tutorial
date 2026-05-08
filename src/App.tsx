@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import Layout from '@/components/Layout';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
@@ -45,29 +46,31 @@ function AppInit({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <Router>
-      <AppInit>
-        <Routes>
-          <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-          <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+    <ErrorBoundary>
+      <Router>
+        <AppInit>
+          <Routes>
+            <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+            <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
 
-          <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-            <Route index element={<Home />} />
-            <Route path="explore" element={<Explore />} />
-            <Route path="publish" element={<Publish />} />
-            <Route path="messages" element={<Messages />} />
-            <Route path="chat/:id" element={<ChatDetail />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="profile/:userId" element={<Profile />} />
-            <Route path="notifications" element={<Notifications />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="post/:postId" element={<PostDetail />} />
-            <Route path="topic/:tag" element={<Topic />} />
-          </Route>
+            <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+              <Route index element={<Home />} />
+              <Route path="explore" element={<Explore />} />
+              <Route path="publish" element={<Publish />} />
+              <Route path="messages" element={<Messages />} />
+              <Route path="chat/:id" element={<ChatDetail />} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="profile/:userId" element={<Profile />} />
+              <Route path="notifications" element={<Notifications />} />
+              <Route path="settings" element={<Settings />} />
+              <Route path="post/:postId" element={<PostDetail />} />
+              <Route path="topic/:tag" element={<Topic />} />
+            </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AppInit>
-    </Router>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AppInit>
+      </Router>
+    </ErrorBoundary>
   );
 }

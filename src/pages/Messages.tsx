@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Search, MessageSquarePlus, X, User, Trash2, EyeOff, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -45,6 +45,7 @@ export default function Messages() {
 
   const locationState = location.state as { startChatWith?: string } | null;
   const startChatWith = locationState?.startChatWith;
+  const startChatHandledRef = useRef(false);
 
   const fetchChats = async () => {
     try {
@@ -81,9 +82,10 @@ export default function Messages() {
   }, [currentUser?.id]);
 
   useEffect(() => {
-    if (startChatWith) {
+    if (startChatWith && !startChatHandledRef.current) {
+      startChatHandledRef.current = true;
       handleStartChat(startChatWith);
-      window.history.replaceState({}, document.title);
+      navigate('/messages', { replace: true, state: {} });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startChatWith]);
@@ -132,8 +134,9 @@ export default function Messages() {
       await apiPost(`/chats/${chatId}/hide`, {});
       setChats((prev) => prev.filter((c) => c.id !== chatId));
       setMenuChatId(null);
-      if (window.location.pathname === `/chat/${chatId}`) {
-        navigate('/messages');
+      dispatchRefreshUnread();
+      if (location.pathname === `/chat/${chatId}`) {
+        navigate('/messages', { replace: true });
       }
     } catch {}
   };
@@ -144,6 +147,7 @@ export default function Messages() {
       await del(`/chats/${chatId}`);
       setChats((prev) => prev.filter((c) => c.id !== chatId));
       setMenuChatId(null);
+      dispatchRefreshUnread();
       if (location.pathname === `/chat/${chatId}`) {
         navigate('/messages', { replace: true });
       }
