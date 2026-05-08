@@ -32,7 +32,8 @@ export default function ChatDetail() {
       setChatName(chat.type === 'group' ? (chat.name || '群聊') : (otherMember?.username || '用户'));
       setChatAvatar(chat.type === 'group' ? (chat.avatar || '') : (otherMember?.avatar || ''));
     }
-  }, [locationState, currentUser]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locationState?.chat?.id, currentUser?.id]);
 
   useEffect(() => {
     const fetchMessages = async () => {

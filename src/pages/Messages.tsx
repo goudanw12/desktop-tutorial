@@ -73,7 +73,8 @@ export default function Messages() {
     const handleFocus = () => fetchChats();
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
-  }, [currentUser]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]);
 
   const handleSearchUsers = async (query: string) => {
     if (!query.trim()) {
