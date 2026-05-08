@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Settings, Edit3, Image as ImageIcon, Grid3X3, ArrowLeft, UserPlus, UserCheck, X, Save, Camera } from 'lucide-react';
+import { Settings, Edit3, Image as ImageIcon, Grid3X3, ArrowLeft, UserPlus, UserCheck, X, Save, Camera, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
@@ -28,7 +28,8 @@ export default function Profile() {
   const [following, setFollowing] = useState<UserProfile[]>([]);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [lightboxIndex, setLightboxIndex] = useState(-1);
+  const fileInputRefForAvatar = useRef<HTMLInputElement>(null);
 
   const isOwnProfile = !userId || userId === currentUser?.id;
   const targetUserId = userId || currentUser?.id;
@@ -152,7 +153,7 @@ export default function Profile() {
   };
 
   const handleAvatarSelect = () => {
-    fileInputRef.current?.click();
+    fileInputRefForAvatar.current?.click();
   };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -233,6 +234,24 @@ export default function Profile() {
     fetchFollowing();
   };
 
+  const openLightbox = (idx: number) => {
+    setLightboxIndex(idx);
+  };
+
+  const closeLightbox = () => {
+    setLightboxIndex(-1);
+  };
+
+  const prevPhoto = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLightboxIndex((prev) => (prev > 0 ? prev - 1 : photos.length - 1));
+  };
+
+  const nextPhoto = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLightboxIndex((prev) => (prev < photos.length - 1 ? prev + 1 : 0));
+  };
+
   if (isLoading) {
     return (
       <div className="p-4 md:p-6 max-w-2xl mx-auto">
@@ -296,7 +315,7 @@ export default function Profile() {
                   <span className="w-5 h-5 rounded-full bg-primary-500 text-white flex items-center justify-center text-[10px]">✓</span>
                 )}
               </div>
-              <div className="mt-2">
+              <div className="mt-2 flex items-center gap-2">
                 {isOwnProfile ? (
                   <button
                     onClick={handleOpenEdit}
@@ -400,7 +419,11 @@ export default function Profile() {
           ) : (
             <div className="grid grid-cols-3 gap-1 rounded-xl overflow-hidden">
               {photos.map((photo, idx) => (
-                <div key={idx} className="aspect-square overflow-hidden group cursor-pointer">
+                <div
+                  key={idx}
+                  className="aspect-square overflow-hidden group cursor-pointer"
+                  onClick={() => openLightbox(idx)}
+                >
                   <img
                     src={photo}
                     alt=""
@@ -412,6 +435,49 @@ export default function Profile() {
           )}
         </div>
       </div>
+
+      {lightboxIndex >= 0 && (
+        <div
+          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center"
+          onClick={closeLightbox}
+        >
+          <button
+            onClick={closeLightbox}
+            className="absolute top-4 right-4 p-2 text-white/70 hover:text-white z-10"
+          >
+            <X className="w-6 h-6" />
+          </button>
+
+          {photos.length > 1 && (
+            <button
+              onClick={prevPhoto}
+              className="absolute left-4 top-1/2 -translate-y-1/2 p-2 text-white/70 hover:text-white z-10"
+            >
+              <ChevronLeft className="w-8 h-8" />
+            </button>
+          )}
+
+          <img
+            src={photos[lightboxIndex]}
+            alt=""
+            className="max-w-[90vw] max-h-[85vh] object-contain animate-fadeIn"
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          {photos.length > 1 && (
+            <button
+              onClick={nextPhoto}
+              className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-white/70 hover:text-white z-10"
+            >
+              <ChevronRight className="w-8 h-8" />
+            </button>
+          )}
+
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/60 text-sm">
+            {lightboxIndex + 1} / {photos.length}
+          </div>
+        </div>
+      )}
 
       {showEditModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowEditModal(false)}>
@@ -441,7 +507,7 @@ export default function Profile() {
                     <Camera className="w-3.5 h-3.5" />
                   </button>
                   <input
-                    ref={fileInputRef}
+                    ref={fileInputRefForAvatar}
                     type="file"
                     accept="image/*"
                     onChange={handleAvatarChange}
