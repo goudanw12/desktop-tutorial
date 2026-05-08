@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ArrowLeft, User, Lock, Shield, Palette, LogOut, ChevronRight, X, Save, Eye, EyeOff, ShieldCheck, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, User, Lock, Shield, Palette, LogOut, ChevronRight, X, Save, Eye, EyeOff, ShieldCheck, Clock, CheckCircle, XCircle, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
@@ -34,6 +34,8 @@ export default function Settings() {
   const [isPrivate, setIsPrivate] = useState(false);
   const [allowComments, setAllowComments] = useState(true);
   const [allowMessages, setAllowMessages] = useState(true);
+  const [showVerifyAdmin, setShowVerifyAdmin] = useState(false);
+  const [pendingVerifications, setPendingVerifications] = useState<any[]>([]);
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
@@ -122,11 +124,33 @@ export default function Settings() {
         idType: verifyForm.idType,
       });
       setVerifyStatus({ status: 'pending', realName: verifyForm.realName });
-      setMessage('认证申请已提交');
+      setMessage('认证申请已提交，等待人工审核');
     } catch (err: any) {
       setMessage(err.message || '提交失败');
     }
     setVerifyLoading(false);
+  };
+
+  const handleOpenVerifyAdmin = async () => {
+    try {
+      const res = await get<{ success: boolean; data: any[] }>('/auth/verify/pending');
+      setPendingVerifications(res.data || []);
+    } catch {
+      setPendingVerifications([]);
+    }
+    setShowVerifyAdmin(true);
+  };
+
+  const handleReviewVerify = async (id: string, action: 'approve' | 'reject', reason?: string) => {
+    try {
+      await apiPost(`/auth/verify/${id}/review`, { action, reason });
+      setPendingVerifications((prev) => prev.filter((v) => v.id !== id));
+      if (action === 'approve') {
+        await fetchMe();
+      }
+    } catch (err: any) {
+      setMessage(err.message || '操作失败');
+    }
   };
 
   return (
@@ -185,6 +209,19 @@ export default function Settings() {
               <ChevronRight className="w-4 h-4 text-gray-400" />
             )}
           </button>
+
+          {user?.isVerified && (
+            <button
+              onClick={handleOpenVerifyAdmin}
+              className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-dark-700 transition-colors"
+            >
+              <span className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+                <Users className="w-4 h-4 text-blue-500" />
+              </span>
+              <span className="flex-1 text-left text-sm text-gray-700 dark:text-gray-300">认证审核</span>
+              <ChevronRight className="w-4 h-4 text-gray-400" />
+            </button>
+          )}
         </div>
 
         <div className="bg-white dark:bg-dark-800 rounded-2xl shadow-sm border border-gray-100 dark:border-dark-600 overflow-hidden">
@@ -516,6 +553,57 @@ export default function Settings() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {showVerifyAdmin && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowVerifyAdmin(false)}>
+          <div className="bg-white dark:bg-dark-800 w-full max-w-md rounded-2xl animate-slideUp max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-600">
+              <h3 className="font-display font-semibold text-gray-900 dark:text-white">认证审核</h3>
+              <button onClick={() => setShowVerifyAdmin(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-full">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto flex-1">
+              {pendingVerifications.length === 0 ? (
+                <div className="text-center py-8">
+                  <CheckCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-sm text-gray-500">暂无待审核认证</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {pendingVerifications.map((v) => (
+                    <div key={v.id} className="p-3 rounded-xl bg-gray-50 dark:bg-dark-700 border border-gray-200 dark:border-dark-600">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">@{v.username}</span>
+                        <span className="text-xs text-gray-400">{new Date(v.submitted_at).toLocaleString('zh-CN')}</span>
+                      </div>
+                      <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                        <p>姓名：{v.real_name}</p>
+                        <p>证件号：{v.id_number.slice(0, 4)}****{v.id_number.slice(-4)}</p>
+                        <p>证件类型：{v.id_type === 'id_card' ? '身份证' : v.id_type === 'passport' ? '护照' : '港澳通行证'}</p>
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={() => handleReviewVerify(v.id, 'approve')}
+                          className="flex-1 py-2 rounded-lg text-sm font-medium bg-mint-500/20 text-mint-600 hover:bg-mint-500/30 transition-all"
+                        >
+                          通过
+                        </button>
+                        <button
+                          onClick={() => handleReviewVerify(v.id, 'reject', '信息不符')}
+                          className="flex-1 py-2 rounded-lg text-sm font-medium bg-red-500/20 text-red-500 hover:bg-red-500/30 transition-all"
+                        >
+                          拒绝
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -7,11 +7,11 @@ interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  loginWithPhone: (phone: string, code: string) => Promise<void>;
+  login: (phone: string, password: string) => Promise<void>;
   loginWithQQ: (qqOpenId: string, nickname: string, avatar?: string) => Promise<void>;
-  sendSmsCode: (phone: string) => Promise<string>;
-  register: (username: string, email: string, password: string) => Promise<void>;
+  register: (username: string, phone: string, password: string) => Promise<void>;
+  checkUsername: (username: string) => Promise<boolean>;
+  checkPhone: (phone: string) => Promise<boolean>;
   logout: () => void;
   fetchMe: () => Promise<void>;
 }
@@ -42,22 +42,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: !!localStorage.getItem('token'),
   isLoading: false,
 
-  login: async (email: string, password: string) => {
+  login: async (phone: string, password: string) => {
     set({ isLoading: true });
     try {
-      const res = await post<{ success: boolean; data: { token: string; user: any } }>('/auth/login', { email, password });
-      const { user, token } = handleAuthResponse(res.data);
-      set({ user, token, isAuthenticated: true, isLoading: false });
-    } catch (err: any) {
-      set({ isLoading: false });
-      throw err;
-    }
-  },
-
-  loginWithPhone: async (phone: string, code: string) => {
-    set({ isLoading: true });
-    try {
-      const res = await post<{ success: boolean; data: { token: string; user: any } }>('/auth/sms/login', { phone, code });
+      const res = await post<{ success: boolean; data: { token: string; user: any } }>('/auth/login', { phone, password });
       const { user, token } = handleAuthResponse(res.data);
       set({ user, token, isAuthenticated: true, isLoading: false });
     } catch (err: any) {
@@ -78,21 +66,33 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  sendSmsCode: async (phone: string): Promise<string> => {
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    await post<{ success: boolean; data: { message: string } }>('/auth/sms/send', { phone, code });
-    return code;
-  },
-
-  register: async (username: string, email: string, password: string) => {
+  register: async (username: string, phone: string, password: string) => {
     set({ isLoading: true });
     try {
-      const res = await post<{ success: boolean; data: { token: string; user: any } }>('/auth/register', { username, email, password });
+      const res = await post<{ success: boolean; data: { token: string; user: any } }>('/auth/register', { username, phone, password });
       const { user, token } = handleAuthResponse(res.data);
       set({ user, token, isAuthenticated: true, isLoading: false });
     } catch (err: any) {
       set({ isLoading: false });
       throw err;
+    }
+  },
+
+  checkUsername: async (username: string): Promise<boolean> => {
+    try {
+      const res = await get<{ success: boolean; data: { available: boolean } }>(`/auth/check-username?username=${encodeURIComponent(username)}`);
+      return res.data.available;
+    } catch {
+      return false;
+    }
+  },
+
+  checkPhone: async (phone: string): Promise<boolean> => {
+    try {
+      const res = await get<{ success: boolean; data: { available: boolean } }>(`/auth/check-phone?phone=${encodeURIComponent(phone)}`);
+      return res.data.available;
+    } catch {
+      return false;
     }
   },
 
