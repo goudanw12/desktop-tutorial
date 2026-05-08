@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Search, MessageSquarePlus, X, User } from 'lucide-react';
+import { Search, MessageSquarePlus, X, User, Trash2, EyeOff, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
-import { get, post as apiPost } from '@/lib/api';
+import { get, post as apiPost, del } from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
 import { dispatchRefreshUnread } from '@/lib/events';
 import type { UserProfile } from '@/types';
@@ -40,6 +40,7 @@ export default function Messages() {
   const [showNewChat, setShowNewChat] = useState(false);
   const [searchUsers, setSearchUsers] = useState<UserProfile[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [menuChatId, setMenuChatId] = useState<string | null>(null);
 
   const fetchChats = async () => {
     try {
@@ -113,6 +114,23 @@ export default function Messages() {
     } catch {}
   };
 
+  const handleHideChat = async (chatId: string) => {
+    try {
+      await apiPost(`/chats/${chatId}/hide`, {});
+      setChats((prev) => prev.filter((c) => c.id !== chatId));
+      setMenuChatId(null);
+    } catch {}
+  };
+
+  const handleDeleteChat = async (chatId: string) => {
+    if (!confirm('确定要删除这个聊天吗？此操作不可撤销。')) return;
+    try {
+      await del(`/chats/${chatId}/hide`);
+      setChats((prev) => prev.filter((c) => c.id !== chatId));
+      setMenuChatId(null);
+    } catch {}
+  };
+
   const filteredChats = chats.filter((chat) =>
     (chat.displayName || '').includes(searchQuery)
   );
@@ -160,60 +178,92 @@ export default function Messages() {
         />
       </div>
 
-      <div className="bg-white dark:bg-dark-800 rounded-2xl shadow-sm border border-gray-100 dark:border-dark-600 divide-y divide-gray-100 dark:divide-dark-700">
-        {filteredChats.map((chat) => (
-          <button
-            key={chat.id}
-            onClick={() => {
-              dispatchRefreshUnread();
-              navigate(`/chat/${chat.id}`, { state: { chat } });
-            }}
-            className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-dark-700 transition-colors"
-          >
-            <div className="relative">
-              <img
-                src={chat.displayAvatar}
-                alt={chat.displayName}
-                className="w-12 h-12 rounded-full object-cover"
-              />
-              {chat.unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary-500 text-white text-[10px] rounded-full flex items-center justify-center font-medium">
-                  {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
-                </span>
+      <div className="relative">
+        {menuChatId && (
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setMenuChatId(null)}
+          />
+        )}
+        <div className="bg-white dark:bg-dark-800 rounded-2xl shadow-sm border border-gray-100 dark:border-dark-600 divide-y divide-gray-100 dark:divide-dark-700">
+          {filteredChats.map((chat) => (
+            <div key={chat.id} className="relative">
+              <button
+                onClick={() => {
+                  dispatchRefreshUnread();
+                  navigate(`/chat/${chat.id}`, { state: { chat } });
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setMenuChatId(chat.id);
+                }}
+                className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-dark-700 transition-colors"
+              >
+                <div className="relative">
+                  <img
+                    src={chat.displayAvatar}
+                    alt={chat.displayName}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                  {chat.unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary-500 text-white text-[10px] rounded-full flex items-center justify-center font-medium">
+                      {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{chat.displayName}</p>
+                    <span className="text-xs text-gray-400">{formatTime(chat.lastMessageAt)}</span>
+                  </div>
+                  <p className={cn(
+                    'text-sm truncate mt-0.5',
+                    chat.unreadCount > 0 ? 'text-gray-800 dark:text-gray-200 font-medium' : 'text-gray-500 dark:text-gray-400'
+                  )}>
+                    {chat.lastMessage || '暂无消息'}
+                  </p>
+                </div>
+              </button>
+
+              {menuChatId === chat.id && (
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 z-50 bg-white dark:bg-dark-700 rounded-xl shadow-lg border border-gray-200 dark:border-dark-600 py-1 min-w-[140px] animate-slideUp">
+                  <button
+                    onClick={() => handleHideChat(chat.id)}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-600"
+                  >
+                    <EyeOff className="w-4 h-4" />
+                    隐藏聊天
+                  </button>
+                  <button
+                    onClick={() => handleDeleteChat(chat.id)}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    删除聊天
+                  </button>
+                </div>
               )}
             </div>
-            <div className="flex-1 min-w-0 text-left">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">{chat.displayName}</p>
-                <span className="text-xs text-gray-400">{formatTime(chat.lastMessageAt)}</span>
-              </div>
-              <p className={cn(
-                'text-sm truncate mt-0.5',
-                chat.unreadCount > 0 ? 'text-gray-800 dark:text-gray-200 font-medium' : 'text-gray-500 dark:text-gray-400'
-              )}>
-                {chat.lastMessage || '暂无消息'}
-              </p>
-            </div>
-          </button>
-        ))}
+          ))}
 
-        {filteredChats.length === 0 && (
-          <div className="p-8 text-center">
-            {chats.length === 0 ? (
-              <div className="text-gray-400 text-sm">
-                <p>暂无聊天记录</p>
-                <button
-                  onClick={() => setShowNewChat(true)}
-                  className="mt-2 text-primary-500 hover:underline"
-                >
-                  发起新聊天
-                </button>
-              </div>
-            ) : (
-              <p className="text-gray-400 text-sm">没有找到相关聊天</p>
-            )}
-          </div>
-        )}
+          {filteredChats.length === 0 && (
+            <div className="p-8 text-center">
+              {chats.length === 0 ? (
+                <div className="text-gray-400 text-sm">
+                  <p>暂无聊天记录</p>
+                  <button
+                    onClick={() => setShowNewChat(true)}
+                    className="mt-2 text-primary-500 hover:underline"
+                  >
+                    发起新聊天
+                  </button>
+                </div>
+              ) : (
+                <p className="text-gray-400 text-sm">没有找到相关聊天</p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {showNewChat && (

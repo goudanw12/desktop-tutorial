@@ -115,6 +115,14 @@ db.exec(`
     created_at TEXT DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS chat_hide (
+    id TEXT PRIMARY KEY,
+    chat_id TEXT NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(chat_id, user_id)
+  );
+
   CREATE TABLE IF NOT EXISTS notifications (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -150,6 +158,8 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
   CREATE INDEX IF NOT EXISTS idx_stories_user_id ON stories(user_id);
   CREATE INDEX IF NOT EXISTS idx_stories_expires_at ON stories(expires_at);
+  CREATE INDEX IF NOT EXISTS idx_chat_hide_chat_id ON chat_hide(chat_id);
+  CREATE INDEX IF NOT EXISTS idx_chat_hide_user_id ON chat_hide(user_id);
 `)
 
 const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number }

@@ -12,12 +12,13 @@ router.get('/', authMiddleware, (req: Request, res: Response): void => {
     SELECT c.*,
       (SELECT content FROM messages WHERE chat_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
       (SELECT created_at FROM messages WHERE chat_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_at,
-      (SELECT COUNT(*) FROM messages WHERE chat_id = c.id AND is_read = 0 AND sender_id != ?) as unread_count
+      (SELECT COUNT(*) FROM messages WHERE chat_id = c.id AND is_read = 0 AND sender_id != ?) as unread_count,
+      (SELECT COUNT(*) FROM chat_hide WHERE chat_id = c.id AND user_id = ?) as is_hidden
     FROM chats c
     JOIN chat_members cm ON c.id = cm.chat_id
-    WHERE cm.user_id = ?
+    WHERE cm.user_id = ? AND NOT EXISTS (SELECT 1 FROM chat_hide WHERE chat_id = c.id AND user_id = ?)
     ORDER BY c.updated_at DESC
-  `).all(userId, userId) as any[]
+  `).all(userId, userId, userId, userId) as any[]
 
   const chatsWithMembers = chats.map(chat => {
     const members = db.prepare(`
@@ -205,6 +206,40 @@ router.delete('/:chatId/messages/:messageId', authMiddleware, (req: Request, res
   db.prepare('DELETE FROM messages WHERE id = ?').run(messageId)
 
   res.json({ success: true, data: { message: '删除成功' } })
+})
+
+router.post('/:chatId/hide', authMiddleware, (req: Request, res: Response): void => {
+  const { chatId } = req.params
+  const userId = req.user!.id
+
+  const isMember = db.prepare('SELECT id FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, userId)
+  if (!isMember) {
+    res.status(403).json({ success: false, error: '不是该聊天的成员' })
+    return
+  }
+
+  const existing = db.prepare('SELECT id FROM chat_hide WHERE chat_id = ? AND user_id = ?').get(chatId, userId)
+  if (existing) {
+    res.json({ success: true, data: { message: '已经隐藏了' } })
+    return
+  }
+
+  db.prepare('INSERT INTO chat_hide (id, chat_id, user_id) VALUES (?, ?, ?)').run(crypto.randomUUID(), chatId, userId)
+
+  res.json({ success: true, data: { message: '隐藏成功' } })
+})
+
+router.delete('/:chatId/hide', authMiddleware, (req: Request, res: Response): void => {
+  const { chatId } = req.params
+  const userId = req.user!.id
+
+  const result = db.prepare('DELETE FROM chat_hide WHERE chat_id = ? AND user_id = ?').run(chatId, userId)
+  if (result.changes === 0) {
+    res.status(404).json({ success: false, error: '未隐藏此聊天' })
+    return
+  }
+
+  res.json({ success: true, data: { message: '取消隐藏成功' } })
 })
 
 export default router
