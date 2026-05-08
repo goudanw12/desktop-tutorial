@@ -1,11 +1,13 @@
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Check, CheckCheck } from 'lucide-react';
+import { Check, CheckCheck, Trash2 } from 'lucide-react';
 import type { Message } from '@/types';
 
 interface ChatBubbleProps {
   message: Message;
   isOwn: boolean;
   avatar: string;
+  onDelete?: (messageId: string) => void;
 }
 
 function formatTime(dateStr: string) {
@@ -13,14 +15,62 @@ function formatTime(dateStr: string) {
   return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 }
 
-export default function ChatBubble({ message, isOwn, avatar }: ChatBubbleProps) {
+export default function ChatBubble({ message, isOwn, avatar, onDelete }: ChatBubbleProps) {
+  const [showMenu, setShowMenu] = useState(false);
+
+  const handleLongPress = () => {
+    if (isOwn && onDelete) {
+      setShowMenu(true);
+    }
+  };
+
+  const handleDelete = () => {
+    if (onDelete) {
+      onDelete(message.id);
+    }
+    setShowMenu(false);
+  };
+
   return (
-    <div className={cn('flex gap-2 mb-3 animate-bubbleIn', isOwn ? 'flex-row-reverse' : 'flex-row')}>
+    <div className={cn('flex gap-2 mb-3 animate-bubbleIn relative', isOwn ? 'flex-row-reverse' : 'flex-row')}>
+      {showMenu && (
+        <div
+          className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full z-20"
+        >
+          <button
+            onClick={handleDelete}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500 text-white text-xs rounded-lg shadow-lg"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            删除
+          </button>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-red-500" />
+        </div>
+      )}
+
       {!isOwn && (
         <img src={avatar} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
       )}
 
-      <div className={cn('max-w-[70%] flex flex-col', isOwn ? 'items-end' : 'items-start')}>
+      <div
+        className={cn('max-w-[70%] flex flex-col', isOwn ? 'items-end' : 'items-start')}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          handleLongPress();
+        }}
+        onTouchStart={(e) => {
+          const timer = setTimeout(handleLongPress, 500);
+          (e.currentTarget as HTMLElement).dataset.timer = timer.toString();
+        }}
+        onTouchEnd={(e) => {
+          const timer = (e.currentTarget as HTMLElement).dataset.timer;
+          if (timer) clearTimeout(parseInt(timer));
+        }}
+        onTouchCancel={(e) => {
+          const timer = (e.currentTarget as HTMLElement).dataset.timer;
+          if (timer) clearTimeout(parseInt(timer));
+        }}
+      >
         {message.type === 'text' ? (
           <div
             className={cn(

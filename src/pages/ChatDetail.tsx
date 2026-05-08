@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { ArrowLeft, Phone, Video, Image, Smile, Send } from 'lucide-react';
+import { ArrowLeft, Image, Smile, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
-import { get, post as apiPost } from '@/lib/api';
+import { get, post as apiPost, del } from '@/lib/api';
 import { dispatchRefreshUnread } from '@/lib/events';
 import ChatBubble from '@/components/ChatBubble';
 import type { Message } from '@/types';
@@ -73,6 +73,14 @@ export default function ChatDetail() {
     markAsRead();
   }, [id, currentUser, locationState]);
 
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!id) return;
+    try {
+      await del(`/chats/${id}/messages/${messageId}`);
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    } catch {}
+  };
+
   const handleSend = async () => {
     if (!inputValue.trim() || !id) return;
     const text = inputValue.trim();
@@ -114,14 +122,6 @@ export default function ChatDetail() {
           <p className="text-sm font-medium text-gray-900 dark:text-white">{chatName || '聊天'}</p>
           <p className="text-xs text-mint-500">在线</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="p-2 text-gray-500 hover:text-primary-500 transition-colors">
-            <Phone className="w-5 h-5" />
-          </button>
-          <button className="p-2 text-gray-500 hover:text-primary-500 transition-colors">
-            <Video className="w-5 h-5" />
-          </button>
-        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
@@ -138,6 +138,7 @@ export default function ChatDetail() {
               message={msg}
               isOwn={msg.senderId === currentUser?.id}
               avatar={chatAvatar}
+              onDelete={handleDeleteMessage}
             />
           ))
         )}

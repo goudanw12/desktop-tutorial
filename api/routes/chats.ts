@@ -181,4 +181,30 @@ router.post('/:chatId/read', authMiddleware, (req: Request, res: Response): void
   res.json({ success: true, data: { marked: true } })
 })
 
+router.delete('/:chatId/messages/:messageId', authMiddleware, (req: Request, res: Response): void => {
+  const { chatId, messageId } = req.params
+  const userId = req.user!.id
+
+  const isMember = db.prepare('SELECT id FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, userId)
+  if (!isMember) {
+    res.status(403).json({ success: false, error: '不是该聊天的成员' })
+    return
+  }
+
+  const message = db.prepare('SELECT id, sender_id FROM messages WHERE id = ? AND chat_id = ?').get(messageId, chatId) as any
+  if (!message) {
+    res.status(404).json({ success: false, error: '消息不存在' })
+    return
+  }
+
+  if (message.sender_id !== userId) {
+    res.status(403).json({ success: false, error: '无权删除此消息' })
+    return
+  }
+
+  db.prepare('DELETE FROM messages WHERE id = ?').run(messageId)
+
+  res.json({ success: true, data: { message: '删除成功' } })
+})
+
 export default router
