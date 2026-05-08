@@ -162,4 +162,23 @@ router.post('/:chatId/messages', authMiddleware, (req: Request, res: Response): 
   res.status(201).json({ success: true, data: message })
 })
 
+router.post('/:chatId/read', authMiddleware, (req: Request, res: Response): void => {
+  const { chatId } = req.params
+  const userId = req.user!.id
+
+  const isMember = db.prepare('SELECT id FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, userId)
+  if (!isMember) {
+    res.status(403).json({ success: false, error: '不是该聊天的成员' })
+    return
+  }
+
+  db.prepare(`
+    UPDATE messages
+    SET is_read = 1
+    WHERE chat_id = ? AND sender_id != ? AND is_read = 0
+  `).run(chatId, userId)
+
+  res.json({ success: true, data: { marked: true } })
+})
+
 export default router

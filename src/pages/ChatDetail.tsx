@@ -4,6 +4,7 @@ import { ArrowLeft, Phone, Video, Image, Smile, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { get, post as apiPost } from '@/lib/api';
+import { dispatchRefreshUnread } from '@/lib/events';
 import ChatBubble from '@/components/ChatBubble';
 import type { Message } from '@/types';
 
@@ -61,6 +62,15 @@ export default function ChatDetail() {
       setIsLoading(false);
     };
     fetchMessages();
+
+    const markAsRead = async () => {
+      if (!id) return;
+      try {
+        await apiPost(`/chats/${id}/read`, {});
+        dispatchRefreshUnread();
+      } catch {}
+    };
+    markAsRead();
   }, [id, currentUser, locationState]);
 
   const handleSend = async () => {

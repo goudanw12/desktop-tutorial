@@ -3,7 +3,9 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Compass, PlusCircle, MessageCircle, Bell, Settings, User, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
+import { useThemeStore } from '@/stores/themeStore';
 import { get } from '@/lib/api';
+import { REFRESH_UNREAD_EVENT } from '@/lib/events';
 import Sidebar from './Sidebar';
 
 const navItems = [
@@ -18,18 +20,42 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const { theme } = useThemeStore();
+  const [hasMessageUnread, setHasMessageUnread] = useState(false);
+  const [hasNotificationUnread, setHasNotificationUnread] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [messageCount, setMessageCount] = useState(0);
 
   useEffect(() => {
-    const fetchUnread = async () => {
+    const fetchUnreadCounts = async () => {
       try {
-        const res = await get<{ success: boolean; data: { unreadCount: number } }>('/notifications');
-        setUnreadNotifications(res.data?.unreadCount || 0);
+        const chatsRes = await get<{ success: boolean; data: any[] }>('/chats');
+        const totalUnread = (chatsRes.data || []).reduce(
+          (sum: number, chat: any) => sum + (chat.unread_count || 0),
+          0
+        );
+        setMessageCount(totalUnread);
+        setHasMessageUnread(totalUnread > 0);
+      } catch {}
+
+      try {
+        const notifRes = await get<{ success: boolean; data: any[] }>('/notifications');
+        const unread = (notifRes.data || []).filter((n: any) => !n.is_read).length;
+        setNotificationCount(unread);
+        setHasNotificationUnread(unread > 0);
       } catch {}
     };
-    fetchUnread();
-    const interval = setInterval(fetchUnread, 30000);
-    return () => clearInterval(interval);
+
+    fetchUnreadCounts();
+    const interval = setInterval(fetchUnreadCounts, 10000);
+
+    const handleRefresh = () => fetchUnreadCounts();
+    window.addEventListener(REFRESH_UNREAD_EVENT, handleRefresh);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener(REFRESH_UNREAD_EVENT, handleRefresh);
+    };
   }, []);
 
   const handleNavClick = (path: string) => {
@@ -43,6 +69,12 @@ export default function Layout() {
 
   const isProfileActive = location.pathname === '/profile' || location.pathname.startsWith('/profile/');
 
+  const renderUnreadBadge = (count: number, show: boolean) => {
+    if (!show || count === 0) return null;
+    if (count > 99) return <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary-500 text-white text-[9px] rounded-full flex items-center justify-center font-medium">99+</span>;
+    return <span className="absolute -top-1 -right-1 w-4.5 h-4.5 bg-primary-500 text-white text-[9px] rounded-full flex items-center justify-center font-medium">{count}</span>;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark-900 font-body">
       <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-dark-800 border-r border-gray-200 dark:border-dark-600 flex-col z-30">
@@ -55,12 +87,16 @@ export default function Layout() {
         <nav className="flex-1 px-3 space-y-1">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
+            const showUnread = item.path === '/notifications';
+            const unread = showUnread ? notificationCount : (item.path === '/messages' ? messageCount : 0);
+            const hasUnread = showUnread ? hasNotificationUnread : (item.path === '/messages' ? hasMessageUnread : false);
+
             return (
               <button
                 key={item.path}
                 onClick={() => handleNavClick(item.path)}
                 className={cn(
-                  'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200',
+                  'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 relative',
                   isActive
                     ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400'
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-700'
@@ -68,14 +104,7 @@ export default function Layout() {
               >
                 <item.icon className={cn('w-5 h-5', isActive && 'text-primary-500')} />
                 <span>{item.label}</span>
-                {item.path === '/notifications' && unreadNotifications > 0 && (
-                  <span className="ml-auto w-5 h-5 bg-primary-500 text-white text-xs rounded-full flex items-center justify-center">
-                    {unreadNotifications > 9 ? '9+' : unreadNotifications}
-                  </span>
-                )}
-                {item.path === '/messages' && (
-                  <span className="ml-auto w-2 h-2 bg-mint-500 rounded-full" />
-                )}
+                {renderUnreadBadge(unread, hasUnread)}
               </button>
             );
           })}
@@ -131,11 +160,6 @@ export default function Layout() {
         <h1 className="font-display text-xl font-bold bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">
           Social
         </h1>
-        {unreadNotifications > 0 && (
-          <span className="ml-auto w-5 h-5 bg-primary-500 text-white text-xs rounded-full flex items-center justify-center">
-            {unreadNotifications > 9 ? '9+' : unreadNotifications}
-          </span>
-        )}
       </header>
 
       <main className="md:ml-64 pt-14 md:pt-0 pb-20 md:pb-0">
@@ -152,6 +176,9 @@ export default function Layout() {
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/90 dark:bg-dark-800/90 backdrop-blur-lg border-t border-gray-200 dark:border-dark-600 z-30 flex items-center justify-around px-2">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
+          const hasUnread = item.path === '/notifications' ? hasNotificationUnread : (item.path === '/messages' ? hasMessageUnread : false);
+          const count = item.path === '/notifications' ? notificationCount : (item.path === '/messages' ? messageCount : 0);
+
           return (
             <button
               key={item.path}
@@ -161,16 +188,11 @@ export default function Layout() {
                 isActive ? 'text-primary-500' : 'text-gray-500 dark:text-gray-400'
               )}
             >
-              <item.icon className={cn('w-5 h-5', item.path === '/publish' && 'w-7 h-7')} />
+              <div className="relative">
+                <item.icon className={cn('w-5 h-5', item.path === '/publish' && 'w-7 h-7')} />
+                {renderUnreadBadge(count, hasUnread)}
+              </div>
               <span className="text-[10px]">{item.label}</span>
-              {item.path === '/notifications' && unreadNotifications > 0 && (
-                <span className="absolute -top-0.5 right-1 w-4 h-4 bg-primary-500 text-white text-[9px] rounded-full flex items-center justify-center">
-                  {unreadNotifications > 9 ? '9+' : unreadNotifications}
-                </span>
-              )}
-              {item.path === '/messages' && (
-                <span className="absolute top-0 right-2 w-2 h-2 bg-mint-500 rounded-full" />
-              )}
             </button>
           );
         })}
