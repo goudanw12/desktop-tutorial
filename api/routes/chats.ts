@@ -58,6 +58,8 @@ router.post('/', authMiddleware, (req: Request, res: Response): void => {
     `).get(userId, otherUserId) as any
 
     if (existingChat) {
+      db.prepare('DELETE FROM chat_hide WHERE chat_id = ? AND user_id = ?').run(existingChat.id, userId)
+
       const chat = db.prepare('SELECT * FROM chats WHERE id = ?').get(existingChat.id) as any
       const members = db.prepare(`
         SELECT u.id, u.username, u.avatar, u.is_verified, cm.role
