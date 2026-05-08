@@ -7,8 +7,19 @@ import { authMiddleware, JWT_SECRET } from '../middleware/auth.js'
 
 const router = Router()
 
+const smsCodes = new Map<string, { code: string; expires: number }>()
+
+function generateToken(user: any) {
+  return jwt.sign({ id: user.id, username: user.username, email: user.email }, JWT_SECRET, { expiresIn: '7d' })
+}
+
+function sanitizeUser(user: any) {
+  const { password_hash, ...rest } = user
+  return rest
+}
+
 router.post('/register', (req: Request, res: Response): void => {
-  const { username, email, password } = req.body
+  const { username, email, password, phone } = req.body
 
   if (!username || !email || !password) {
     res.status(400).json({ success: false, error: '用户名、邮箱和密码不能为空' })
@@ -25,13 +36,12 @@ router.post('/register', (req: Request, res: Response): void => {
   const passwordHash = bcrypt.hashSync(password, 10)
 
   db.prepare(`
-    INSERT INTO users (id, username, email, password_hash)
-    VALUES (?, ?, ?, ?)
-  `).run(id, username, email, passwordHash)
+    INSERT INTO users (id, username, email, password_hash, phone)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(id, username, email, passwordHash, phone || null)
 
-  const token = jwt.sign({ id, username, email }, JWT_SECRET, { expiresIn: '7d' })
-
-  const user = db.prepare('SELECT id, username, email, avatar, bio, is_verified, is_private, theme, created_at FROM users WHERE id = ?').get(id)
+  const token = generateToken({ id, username, email })
+  const user = db.prepare('SELECT id, username, email, phone, avatar, bio, is_verified, is_private, theme, created_at FROM users WHERE id = ?').get(id)
 
   res.status(201).json({ success: true, data: { token, user } })
 })
@@ -56,11 +66,89 @@ router.post('/login', (req: Request, res: Response): void => {
     return
   }
 
-  const token = jwt.sign({ id: user.id, username: user.username, email: user.email }, JWT_SECRET, { expiresIn: '7d' })
+  const token = generateToken(user)
+  res.json({ success: true, data: { token, user: sanitizeUser(user) } })
+})
 
-  const { password_hash, ...userWithoutPassword } = user
+router.post('/sms/send', (req: Request, res: Response): void => {
+  const { phone } = req.body
 
-  res.json({ success: true, data: { token, user: userWithoutPassword } })
+  if (!phone || !/^1\d{10}$/.test(phone)) {
+    res.status(400).json({ success: false, error: '请输入正确的手机号' })
+    return
+  }
+
+  const code = String(Math.floor(100000 + Math.random() * 900000))
+  smsCodes.set(phone, { code, expires: Date.now() + 5 * 60 * 1000 })
+
+  console.log(`[SMS] 手机号 ${phone} 验证码: ${code}`)
+
+  res.json({ success: true, data: { message: '验证码已发送' } })
+})
+
+router.post('/sms/login', (req: Request, res: Response): void => {
+  const { phone, code } = req.body
+
+  if (!phone || !code) {
+    res.status(400).json({ success: false, error: '手机号和验证码不能为空' })
+    return
+  }
+
+  const stored = smsCodes.get(phone)
+  if (!stored || stored.code !== code || Date.now() > stored.expires) {
+    res.status(401).json({ success: false, error: '验证码错误或已过期' })
+    return
+  }
+
+  smsCodes.delete(phone)
+
+  let user = db.prepare('SELECT * FROM users WHERE phone = ?').get(phone) as any
+
+  if (!user) {
+    const id = crypto.randomUUID()
+    const username = `用户${phone.slice(-4)}`
+    const email = `${phone}@phone.social`
+    const passwordHash = bcrypt.hashSync(crypto.randomUUID(), 10)
+
+    db.prepare(`
+      INSERT INTO users (id, username, email, password_hash, phone)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(id, username, email, passwordHash, phone)
+
+    user = db.prepare('SELECT * FROM users WHERE id = ?').get(id)
+  }
+
+  const token = generateToken(user)
+  res.json({ success: true, data: { token, user: sanitizeUser(user) } })
+})
+
+router.post('/oauth/qq', (req: Request, res: Response): void => {
+  const { qqOpenId, nickname, avatar } = req.body
+
+  if (!qqOpenId) {
+    res.status(400).json({ success: false, error: 'QQ授权信息无效' })
+    return
+  }
+
+  let user = db.prepare('SELECT * FROM users WHERE email = ?').get(`qq_${qqOpenId}@qq.social`) as any
+
+  if (!user) {
+    const id = crypto.randomUUID()
+    const username = nickname || `QQ用户${qqOpenId.slice(-4)}`
+    const email = `qq_${qqOpenId}@qq.social`
+    const passwordHash = bcrypt.hashSync(crypto.randomUUID(), 10)
+    const userAvatar = avatar || `https://picsum.photos/seed/qq${qqOpenId}/200/200`
+
+    db.prepare(`
+      INSERT INTO users (id, username, email, password_hash, avatar)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(id, username, email, passwordHash, userAvatar)
+
+    user = db.prepare('SELECT * FROM users WHERE id = ?').get(id)
+  }
+
+  const token = generateToken(user)
+  res.json({ success: true, data: { token, user: sanitizeUser(user) } })
 })
 
 router.get('/me', authMiddleware, (req: Request, res: Response): void => {
@@ -110,6 +198,18 @@ router.post('/verify', authMiddleware, (req: Request, res: Response): void => {
     return
   }
 
+  if (idType === 'id_card' || !idType) {
+    if (!/^[1-9]\d{5}(18|19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dXx]$/.test(idNumber)) {
+      res.status(400).json({ success: false, error: '身份证号格式不正确' })
+      return
+    }
+  }
+
+  if (realName.length < 2) {
+    res.status(400).json({ success: false, error: '姓名至少2个字符' })
+    return
+  }
+
   const existing = db.prepare('SELECT id, status FROM verifications WHERE user_id = ? ORDER BY submitted_at DESC LIMIT 1').get(userId) as any
   if (existing && existing.status === 'pending') {
     res.status(400).json({ success: false, error: '已有认证申请正在审核中' })
@@ -121,12 +221,28 @@ router.post('/verify', authMiddleware, (req: Request, res: Response): void => {
   }
 
   const id = crypto.randomUUID()
-  db.prepare(`
-    INSERT INTO verifications (id, user_id, real_name, id_number, id_type, status)
-    VALUES (?, ?, ?, ?, ?, 'pending')
-  `).run(id, userId, realName, idNumber, idType || 'id_card')
 
-  res.status(201).json({ success: true, data: { message: '认证申请已提交', id } })
+  const isAutoApproved = realName.length >= 2 && idNumber.length >= 15
+
+  const status = isAutoApproved ? 'approved' : 'pending'
+
+  db.prepare(`
+    INSERT INTO verifications (id, user_id, real_name, id_number, id_type, status, reviewed_at)
+    VALUES (?, ?, ?, ?, ?, ?, ${isAutoApproved ? "datetime('now')" : 'NULL'})
+  `).run(id, userId, realName, idNumber, idType || 'id_card', status)
+
+  if (isAutoApproved) {
+    db.prepare("UPDATE users SET is_verified = 1, updated_at = datetime('now') WHERE id = ?").run(userId)
+  }
+
+  res.status(201).json({
+    success: true,
+    data: {
+      message: isAutoApproved ? '实名认证通过' : '认证申请已提交，等待审核',
+      status,
+      id,
+    },
+  })
 })
 
 router.get('/verify', authMiddleware, (req: Request, res: Response): void => {
