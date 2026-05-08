@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Compass, PlusCircle, MessageCircle, Bell, Settings, User, LogOut } from 'lucide-react';
+import { Home, Compass, PlusCircle, MessageCircle, Bell, Settings, User, LogOut, Inbox as InboxIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { useThemeStore } from '@/stores/themeStore';
@@ -12,8 +12,7 @@ const navItems = [
   { path: '/', icon: Home, label: '首页' },
   { path: '/explore', icon: Compass, label: '探索' },
   { path: '/publish', icon: PlusCircle, label: '发布' },
-  { path: '/messages', icon: MessageCircle, label: '消息' },
-  { path: '/notifications', icon: Bell, label: '通知' },
+  { path: '/messages', icon: InboxIcon, label: '消息' },
 ];
 
 export default function Layout() {
@@ -22,10 +21,8 @@ export default function Layout() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const theme = useThemeStore((s) => s.theme);
-  const [hasMessageUnread, setHasMessageUnread] = useState(false);
-  const [hasNotificationUnread, setHasNotificationUnread] = useState(false);
-  const [notificationCount, setNotificationCount] = useState(0);
   const [messageCount, setMessageCount] = useState(0);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   const fetchUnreadCounts = useCallback(async () => {
     try {
@@ -35,24 +32,20 @@ export default function Layout() {
         0
       );
       setMessageCount(totalUnread);
-      setHasMessageUnread(totalUnread > 0);
     } catch {}
 
     try {
       const notifRes = await get<{ success: boolean; data: any[] }>('/notifications');
       const unread = (notifRes.data || []).filter((n: any) => !n.is_read).length;
       setNotificationCount(unread);
-      setHasNotificationUnread(unread > 0);
     } catch {}
   }, []);
 
   useEffect(() => {
     fetchUnreadCounts();
     const interval = setInterval(fetchUnreadCounts, 10000);
-
     const handleRefresh = () => fetchUnreadCounts();
     window.addEventListener(REFRESH_UNREAD_EVENT, handleRefresh);
-
     return () => {
       clearInterval(interval);
       window.removeEventListener(REFRESH_UNREAD_EVENT, handleRefresh);
@@ -69,9 +62,11 @@ export default function Layout() {
   };
 
   const isProfileActive = location.pathname === '/profile' || location.pathname.startsWith('/profile/');
+  const isInboxActive = location.pathname === '/messages' || location.pathname === '/notifications';
+  const totalUnread = messageCount + notificationCount;
 
-  const renderUnreadBadge = (count: number, show: boolean) => {
-    if (!show || count === 0) return null;
+  const renderUnreadBadge = (count: number) => {
+    if (count === 0) return null;
     if (count > 99) return <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary-500 text-white text-[9px] rounded-full flex items-center justify-center font-medium">99+</span>;
     return <span className="absolute -top-1 -right-1 w-4.5 h-4.5 bg-primary-500 text-white text-[9px] rounded-full flex items-center justify-center font-medium">{count}</span>;
   };
@@ -87,10 +82,8 @@ export default function Layout() {
 
         <nav className="flex-1 px-3 space-y-1">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            const showUnread = item.path === '/notifications';
-            const unread = showUnread ? notificationCount : (item.path === '/messages' ? messageCount : 0);
-            const hasUnread = showUnread ? hasNotificationUnread : (item.path === '/messages' ? hasMessageUnread : false);
+            const isActive = item.path === '/messages' ? isInboxActive : location.pathname === item.path;
+            const unread = item.path === '/messages' ? totalUnread : 0;
 
             return (
               <button
@@ -105,7 +98,7 @@ export default function Layout() {
               >
                 <item.icon className={cn('w-5 h-5', isActive && 'text-primary-500')} />
                 <span>{item.label}</span>
-                {renderUnreadBadge(unread, hasUnread)}
+                {renderUnreadBadge(unread)}
               </button>
             );
           })}
@@ -147,7 +140,7 @@ export default function Layout() {
               <img src={user.avatar} alt={user.username} className="w-10 h-10 rounded-full object-cover" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user.username}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">@{user.username}</p>
               </div>
               <button onClick={(e) => { e.stopPropagation(); handleLogout(); }} className="p-1.5 text-gray-400 hover:text-primary-500 transition-colors">
                 <LogOut className="w-4 h-4" />
@@ -176,9 +169,8 @@ export default function Layout() {
 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/90 dark:bg-dark-800/90 backdrop-blur-lg border-t border-gray-200 dark:border-dark-600 z-30 flex items-center justify-around px-2">
         {navItems.map((item) => {
-          const isActive = location.pathname === item.path;
-          const hasUnread = item.path === '/notifications' ? hasNotificationUnread : (item.path === '/messages' ? hasMessageUnread : false);
-          const count = item.path === '/notifications' ? notificationCount : (item.path === '/messages' ? messageCount : 0);
+          const isActive = item.path === '/messages' ? isInboxActive : location.pathname === item.path;
+          const count = item.path === '/messages' ? totalUnread : 0;
 
           return (
             <button
@@ -191,7 +183,7 @@ export default function Layout() {
             >
               <div className="relative">
                 <item.icon className={cn('w-5 h-5', item.path === '/publish' && 'w-7 h-7')} />
-                {renderUnreadBadge(count, hasUnread)}
+                {renderUnreadBadge(count)}
               </div>
               <span className="text-[10px]">{item.label}</span>
             </button>

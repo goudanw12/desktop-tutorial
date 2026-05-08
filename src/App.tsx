@@ -8,10 +8,9 @@ import Register from '@/pages/Register';
 import Home from '@/pages/Home';
 import Explore from '@/pages/Explore';
 import Publish from '@/pages/Publish';
-import Messages from '@/pages/Messages';
+import Inbox from '@/pages/Inbox';
 import ChatDetail from '@/pages/ChatDetail';
 import Profile from '@/pages/Profile';
-import Notifications from '@/pages/Notifications';
 import Settings from '@/pages/Settings';
 import PostDetail from '@/pages/PostDetail';
 import Topic from '@/pages/Topic';
@@ -58,11 +57,11 @@ export default function App() {
               <Route index element={<Home />} />
               <Route path="explore" element={<Explore />} />
               <Route path="publish" element={<Publish />} />
-              <Route path="messages" element={<Messages />} />
+              <Route path="messages" element={<Inbox />} />
+              <Route path="notifications" element={<Inbox />} />
               <Route path="chat/:id" element={<ChatDetail />} />
               <Route path="profile" element={<Profile />} />
               <Route path="profile/:userId" element={<Profile />} />
-              <Route path="notifications" element={<Notifications />} />
               <Route path="settings" element={<Settings />} />
               <Route path="post/:postId" element={<PostDetail />} />
               <Route path="topic/:tag" element={<Topic />} />
