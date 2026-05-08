@@ -1,6 +1,6 @@
-const BASE_URL = (typeof window !== 'undefined' && (window as any).electronAPI?.isElectron) 
-  ? 'http://127.0.0.1:3001/api' 
-  : (import.meta.env.VITE_API_URL || '/api');
+const BASE_URL = (typeof window !== 'undefined' && (window as any).electronAPI?.isElectron)
+  ? 'http://127.0.0.1:3001/api'
+  : (import.meta.env.VITE_API_URL || 'https://social-app-backend.onrender.com/api');
 
 function getToken(): string | null {
   return localStorage.getItem('token');
