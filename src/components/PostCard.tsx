@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Heart, MessageCircle, Share2, Bookmark, X, Send } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, X, Send, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { post as apiPost, get, del } from '@/lib/api';
@@ -37,6 +37,7 @@ export default function PostCard({ post, onLike, onBookmark, onUpdate }: PostCar
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [sharesCount, setSharesCount] = useState(post.sharesCount);
+  const [lightboxIndex, setLightboxIndex] = useState(-1);
 
   const handleLike = async () => {
     const prevLiked = isLiked;
@@ -155,10 +156,28 @@ export default function PostCard({ post, onLike, onBookmark, onUpdate }: PostCar
   };
 
   const imageGridClass = (count: number) => {
-    if (count === 1) return 'grid-cols-1 max-h-80';
-    if (count === 2) return 'grid-cols-2 max-h-64';
-    if (count === 3) return 'grid-cols-3 max-h-64';
-    return 'grid-cols-2 max-h-80';
+    if (count === 1) return 'grid-cols-1';
+    if (count === 2) return 'grid-cols-2';
+    if (count === 3) return 'grid-cols-3';
+    return 'grid-cols-2';
+  };
+
+  const openLightbox = (idx: number) => {
+    setLightboxIndex(idx);
+  };
+
+  const closeLightbox = () => {
+    setLightboxIndex(-1);
+  };
+
+  const prevImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLightboxIndex((prev) => (prev > 0 ? prev - 1 : post.images.length - 1));
+  };
+
+  const nextImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLightboxIndex((prev) => (prev < post.images.length - 1 ? prev + 1 : 0));
   };
 
   return (
@@ -193,11 +212,16 @@ export default function PostCard({ post, onLike, onBookmark, onUpdate }: PostCar
         {post.images.length > 0 && (
           <div className={cn('grid gap-1 rounded-xl overflow-hidden mb-3', imageGridClass(post.images.length))}>
             {post.images.slice(0, 4).map((img, idx) => (
-              <div key={idx} className="relative aspect-square overflow-hidden">
+              <div
+                key={idx}
+                className="relative overflow-hidden cursor-pointer"
+                style={{ aspectRatio: post.images.length === 1 ? '16/10' : '1/1' }}
+                onClick={() => openLightbox(idx)}
+              >
                 <img
                   src={img}
                   alt=""
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                  className="w-full h-full object-cover hover:opacity-90 transition-opacity duration-200"
                 />
                 {idx === 3 && post.images.length > 4 && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -258,6 +282,49 @@ export default function PostCard({ post, onLike, onBookmark, onUpdate }: PostCar
           </button>
         </div>
       </article>
+
+      {lightboxIndex >= 0 && (
+        <div
+          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center"
+          onClick={closeLightbox}
+        >
+          <button
+            onClick={closeLightbox}
+            className="absolute top-4 right-4 p-2 text-white/70 hover:text-white z-10"
+          >
+            <X className="w-6 h-6" />
+          </button>
+
+          {post.images.length > 1 && (
+            <button
+              onClick={prevImage}
+              className="absolute left-4 top-1/2 -translate-y-1/2 p-2 text-white/70 hover:text-white z-10"
+            >
+              <ChevronLeft className="w-8 h-8" />
+            </button>
+          )}
+
+          <img
+            src={post.images[lightboxIndex]}
+            alt=""
+            className="max-w-[90vw] max-h-[85vh] object-contain animate-fadeIn"
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          {post.images.length > 1 && (
+            <button
+              onClick={nextImage}
+              className="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-white/70 hover:text-white z-10"
+            >
+              <ChevronRight className="w-8 h-8" />
+            </button>
+          )}
+
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/60 text-sm">
+            {lightboxIndex + 1} / {post.images.length}
+          </div>
+        </div>
+      )}
 
       {showComments && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center" onClick={() => setShowComments(false)}>

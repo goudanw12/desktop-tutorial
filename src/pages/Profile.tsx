@@ -1,28 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Settings, Edit3, Image as ImageIcon, Grid3X3, ArrowLeft, UserPlus, UserCheck } from 'lucide-react';
+import { Settings, Edit3, Image as ImageIcon, Grid3X3, ArrowLeft, UserPlus, UserCheck, X, Save } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
-import { get, post as apiPost, del } from '@/lib/api';
+import { get, post as apiPost, del, put } from '@/lib/api';
 import PostCard from '@/components/PostCard';
 import type { Post, UserProfile } from '@/types';
-
-function formatTime(dateStr: string) {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return '刚刚';
-  if (minutes < 60) return `${minutes}分钟前`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}小时前`;
-  return `${Math.floor(hours / 24)}天前`;
-}
 
 export default function Profile() {
   const navigate = useNavigate();
   const { userId } = useParams<{ userId: string }>();
-  const { user: currentUser } = useAuthStore();
+  const { user: currentUser, fetchMe } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'posts' | 'photos'>('posts');
   const [profileUser, setProfileUser] = useState<UserProfile | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -30,6 +18,9 @@ export default function Profile() {
   const [isLoading, setIsLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({ username: '', bio: '', phone: '' });
+  const [isSaving, setIsSaving] = useState(false);
 
   const isOwnProfile = !userId || userId === currentUser?.id;
   const targetUserId = userId || currentUser?.id;
@@ -78,7 +69,7 @@ export default function Profile() {
             isVerified: !!p.is_verified,
           },
           content: p.content,
-          images: JSON.parse(p.images || '[]'),
+          images: typeof p.images === 'string' ? JSON.parse(p.images || '[]') : (p.images || []),
           likesCount: p.like_count || 0,
           commentsCount: p.comment_count || 0,
           sharesCount: p.share_count || 0,
@@ -128,6 +119,32 @@ export default function Profile() {
 
   const handlePostUpdate = (postId: string, updates: Partial<Post>) => {
     setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...updates } : p)));
+  };
+
+  const handleOpenEdit = () => {
+    if (profileUser) {
+      setEditForm({
+        username: profileUser.username,
+        bio: profileUser.bio,
+        phone: '',
+      });
+    }
+    setShowEditModal(true);
+  };
+
+  const handleSaveProfile = async () => {
+    setIsSaving(true);
+    try {
+      await put('/users/profile', {
+        username: editForm.username,
+        bio: editForm.bio,
+        phone: editForm.phone || undefined,
+      });
+      await fetchMe();
+      setProfileUser((prev) => prev ? { ...prev, username: editForm.username, bio: editForm.bio } : prev);
+      setShowEditModal(false);
+    } catch {}
+    setIsSaving(false);
   };
 
   if (isLoading) {
@@ -194,7 +211,7 @@ export default function Profile() {
               <div className="mt-2">
                 {isOwnProfile ? (
                   <button
-                    onClick={() => navigate('/settings')}
+                    onClick={handleOpenEdit}
                     className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-gray-300 dark:border-dark-500 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-700 transition-all"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
@@ -237,11 +254,11 @@ export default function Profile() {
               <p className="font-display text-lg font-bold text-gray-900 dark:text-white">{displayUser.postsCount}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">动态</p>
             </div>
-            <div className="text-center cursor-pointer" onClick={() => {}}>
+            <div className="text-center">
               <p className="font-display text-lg font-bold text-gray-900 dark:text-white">{displayUser.followingCount}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">关注</p>
             </div>
-            <div className="text-center cursor-pointer" onClick={() => {}}>
+            <div className="text-center">
               <p className="font-display text-lg font-bold text-gray-900 dark:text-white">{displayUser.followersCount}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">粉丝</p>
             </div>
@@ -307,6 +324,68 @@ export default function Profile() {
           )}
         </div>
       </div>
+
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowEditModal(false)}>
+          <div
+            className="bg-white dark:bg-dark-800 w-full max-w-md rounded-2xl animate-slideUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-600">
+              <h3 className="font-display font-semibold text-gray-900 dark:text-white">编辑资料</h3>
+              <button onClick={() => setShowEditModal(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-full">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">用户名</label>
+                <input
+                  value={editForm.username}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, username: e.target.value }))}
+                  className="w-full px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-dark-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">简介</label>
+                <textarea
+                  value={editForm.bio}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, bio: e.target.value }))}
+                  rows={3}
+                  className="w-full px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-dark-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500/50 resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">手机号</label>
+                <input
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, phone: e.target.value }))}
+                  placeholder="选填"
+                  className="w-full px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-dark-700 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+                />
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-gray-200 dark:border-dark-600 flex justify-end gap-3">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="px-4 py-2 rounded-full text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-700 transition-all"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleSaveProfile}
+                disabled={isSaving}
+                className="flex items-center gap-1.5 px-6 py-2 rounded-full text-sm bg-gradient-to-r from-primary-500 to-primary-600 text-white hover:shadow-lg transition-all disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                {isSaving ? '保存中...' : '保存'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,22 +1,47 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
+import { post as apiPost, del } from '@/lib/api';
 import type { UserProfile } from '@/types';
 
 interface UserCardProps {
   user: UserProfile;
-  onFollow?: (userId: string) => void;
+  initialFollowing?: boolean;
+  onFollowChange?: (userId: string, isFollowing: boolean) => void;
 }
 
-export default function UserCard({ user, onFollow }: UserCardProps) {
-  const [isFollowing, setIsFollowing] = useState(false);
+export default function UserCard({ user, initialFollowing = false, onFollowChange }: UserCardProps) {
+  const navigate = useNavigate();
+  const [isFollowing, setIsFollowing] = useState(initialFollowing);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleFollow = () => {
-    setIsFollowing(!isFollowing);
-    onFollow?.(user.id);
+  const handleFollow = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isLoading) return;
+    setIsLoading(true);
+
+    const prevFollowing = isFollowing;
+    setIsFollowing(!prevFollowing);
+    onFollowChange?.(user.id, !prevFollowing);
+
+    try {
+      if (prevFollowing) {
+        await del(`/users/${user.id}/follow`);
+      } else {
+        await apiPost(`/users/${user.id}/follow`);
+      }
+    } catch {
+      setIsFollowing(prevFollowing);
+      onFollowChange?.(user.id, prevFollowing);
+    }
+    setIsLoading(false);
   };
 
   return (
-    <div className="flex items-center gap-3 py-3">
+    <div
+      className="flex items-center gap-3 py-3 cursor-pointer"
+      onClick={() => navigate(`/profile/${user.id}`)}
+    >
       <img
         src={user.avatar}
         alt={user.username}
@@ -28,6 +53,7 @@ export default function UserCard({ user, onFollow }: UserCardProps) {
       </div>
       <button
         onClick={handleFollow}
+        disabled={isLoading}
         className={cn(
           'px-4 py-1.5 rounded-full text-xs font-medium transition-all duration-200',
           isFollowing

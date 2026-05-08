@@ -1,48 +1,89 @@
-import { useState, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft, Phone, Video, Image, Smile, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/stores/authStore';
+import { get, post as apiPost } from '@/lib/api';
 import ChatBubble from '@/components/ChatBubble';
 import type { Message } from '@/types';
-
-const MOCK_MESSAGES: Message[] = [
-  { id: 'm1', chatId: 'c1', senderId: 'u1', sender: { id: 'u1', username: '小红', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=hong', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, content: '嗨！最近怎么样？', type: 'text', isRead: true, createdAt: new Date(Date.now() - 3600000).toISOString() },
-  { id: 'm2', chatId: 'c1', senderId: 'me', sender: { id: 'me', username: '我', email: '', avatar: '', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, content: '还不错！最近在忙一个新项目', type: 'text', isRead: true, createdAt: new Date(Date.now() - 3500000).toISOString() },
-  { id: 'm3', chatId: 'c1', senderId: 'u1', sender: { id: 'u1', username: '小红', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=hong', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, content: '听起来很棒！是什么项目？', type: 'text', isRead: true, createdAt: new Date(Date.now() - 3400000).toISOString() },
-  { id: 'm4', chatId: 'c1', senderId: 'me', sender: { id: 'me', username: '我', email: '', avatar: '', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, content: '一个社交应用，用 React + TypeScript 做的', type: 'text', isRead: true, createdAt: new Date(Date.now() - 3300000).toISOString() },
-  { id: 'm5', chatId: 'c1', senderId: 'u1', sender: { id: 'u1', username: '小红', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=hong', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, content: '太酷了！能给我看看截图吗？', type: 'text', isRead: true, createdAt: new Date(Date.now() - 3200000).toISOString() },
-  { id: 'm6', chatId: 'c1', senderId: 'me', sender: { id: 'me', username: '我', email: '', avatar: '', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, content: 'https://picsum.photos/seed/chat1/400/300', type: 'image', isRead: true, createdAt: new Date(Date.now() - 3100000).toISOString() },
-  { id: 'm7', chatId: 'c1', senderId: 'u1', sender: { id: 'u1', username: '小红', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=hong', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, content: '设计很漂亮！明天一起去爬山吧！', type: 'text', isRead: false, createdAt: new Date(Date.now() - 300000).toISOString() },
-];
-
-const CHAT_USER = {
-  id: 'u1',
-  username: '小红',
-  avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=hong',
-};
 
 export default function ChatDetail() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const [messages, setMessages] = useState<Message[]>(MOCK_MESSAGES);
+  const location = useLocation();
+  const { user: currentUser } = useAuthStore();
+  const locationState = location.state as { chat?: any } | null;
+
+  const [chatName, setChatName] = useState('');
+  const [chatAvatar, setChatAvatar] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const handleSend = () => {
-    if (!inputValue.trim()) return;
-    const newMessage: Message = {
-      id: `m${Date.now()}`,
-      chatId: id || 'c1',
-      senderId: 'me',
-      sender: { id: 'me', username: '我', email: '', avatar: '', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 },
-      content: inputValue,
+  useEffect(() => {
+    if (locationState?.chat) {
+      const chat = locationState.chat;
+      const otherMember = (chat.members || []).find(
+        (m: any) => m.id !== currentUser?.id
+      );
+      setChatName(chat.type === 'group' ? (chat.name || '群聊') : (otherMember?.username || '用户'));
+      setChatAvatar(chat.type === 'group' ? (chat.avatar || '') : (otherMember?.avatar || ''));
+    }
+
+    const fetchMessages = async () => {
+      if (!id) return;
+      try {
+        const res = await get<{ success: boolean; data: { messages: any[] } }>(`/chats/${id}/messages`);
+        const mapped = (res.data?.messages || []).map((m: any) => ({
+          id: m.id,
+          chatId: m.chat_id,
+          senderId: m.sender_id,
+          sender: {
+            id: m.sender_id,
+            username: m.username,
+            email: '',
+            avatar: m.avatar || '',
+            bio: '',
+            coverImage: '',
+            followersCount: 0,
+            followingCount: 0,
+            postsCount: 0,
+            isVerified: !!m.is_verified,
+          },
+          content: m.content,
+          type: m.type || 'text',
+          isRead: !!m.is_read,
+          createdAt: m.created_at,
+        }));
+        setMessages(mapped);
+      } catch {}
+      setIsLoading(false);
+    };
+    fetchMessages();
+  }, [id, currentUser, locationState]);
+
+  const handleSend = async () => {
+    if (!inputValue.trim() || !id) return;
+    const text = inputValue.trim();
+    setInputValue('');
+
+    const optimisticMsg: Message = {
+      id: `temp-${Date.now()}`,
+      chatId: id,
+      senderId: currentUser?.id || 'me',
+      sender: currentUser || { id: 'me', username: '我', email: '', avatar: '', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 },
+      content: text,
       type: 'text',
       isRead: false,
       createdAt: new Date().toISOString(),
     };
-    setMessages((prev) => [...prev, newMessage]);
-    setInputValue('');
+    setMessages((prev) => [...prev, optimisticMsg]);
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+
+    try {
+      await apiPost(`/chats/${id}/messages`, { content: text, type: 'text' });
+    } catch {}
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -58,9 +99,9 @@ export default function ChatDetail() {
         <button onClick={() => navigate(-1)} className="p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <img src={CHAT_USER.avatar} alt="" className="w-9 h-9 rounded-full object-cover" />
+        <img src={chatAvatar} alt="" className="w-9 h-9 rounded-full object-cover" />
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-900 dark:text-white">{CHAT_USER.username}</p>
+          <p className="text-sm font-medium text-gray-900 dark:text-white">{chatName || '聊天'}</p>
           <p className="text-xs text-mint-500">在线</p>
         </div>
         <div className="flex items-center gap-2">
@@ -73,15 +114,23 @@ export default function ChatDetail() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
-        {messages.map((msg) => (
-          <ChatBubble
-            key={msg.id}
-            message={msg}
-            isOwn={msg.senderId === 'me'}
-            avatar={CHAT_USER.avatar}
-          />
-        ))}
+      <div className="flex-1 overflow-y-auto p-4">
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="text-center py-8 text-gray-400 text-sm">暂无消息，发送第一条吧～</div>
+        ) : (
+          messages.map((msg) => (
+            <ChatBubble
+              key={msg.id}
+              message={msg}
+              isOwn={msg.senderId === currentUser?.id}
+              avatar={chatAvatar}
+            />
+          ))
+        )}
         <div ref={messagesEndRef} />
       </div>
 

@@ -74,4 +74,31 @@ router.get('/me', authMiddleware, (req: Request, res: Response): void => {
   res.json({ success: true, data: user })
 })
 
+router.post('/change-password', authMiddleware, (req: Request, res: Response): void => {
+  const { currentPassword, newPassword } = req.body
+  const userId = req.user!.id
+
+  if (!currentPassword || !newPassword) {
+    res.status(400).json({ success: false, error: '当前密码和新密码不能为空' })
+    return
+  }
+
+  const user = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(userId) as any
+  if (!user) {
+    res.status(404).json({ success: false, error: '用户不存在' })
+    return
+  }
+
+  const isValid = bcrypt.compareSync(currentPassword, user.password_hash)
+  if (!isValid) {
+    res.status(401).json({ success: false, error: '当前密码错误' })
+    return
+  }
+
+  const newPasswordHash = bcrypt.hashSync(newPassword, 10)
+  db.prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?").run(newPasswordHash, userId)
+
+  res.json({ success: true, data: { message: '密码修改成功' } })
+})
+
 export default router
