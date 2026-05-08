@@ -158,11 +158,11 @@ if (userCount.count === 0) {
   const passwordHash = bcrypt.hashSync('123456', 10)
 
   const users = [
-    { id: crypto.randomUUID(), username: 'alice_wang', email: 'alice@example.com', password_hash: passwordHash, phone: '13800000001', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alice', bio: '热爱生活，喜欢摄影和旅行 📸✈️', is_verified: 1, is_private: 0, theme: 'light' },
-    { id: crypto.randomUUID(), username: 'bob_zhang', email: 'bob@example.com', password_hash: passwordHash, phone: '13800000002', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=bob', bio: '全栈开发者，开源爱好者 💻', is_verified: 1, is_private: 0, theme: 'dark' },
-    { id: crypto.randomUUID(), username: 'charlie_li', email: 'charlie@example.com', password_hash: passwordHash, phone: '13800000003', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=charlie', bio: '音乐人 | 吉他手 🎸', is_verified: 0, is_private: 0, theme: 'light' },
-    { id: crypto.randomUUID(), username: 'diana_chen', email: 'diana@example.com', password_hash: passwordHash, phone: '13800000004', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=diana', bio: '美食博主，分享生活中的美味 🍜', is_verified: 1, is_private: 0, theme: 'light' },
-    { id: crypto.randomUUID(), username: 'evan_liu', email: 'evan@example.com', password_hash: passwordHash, phone: '13800000005', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=evan', bio: '健身达人 | 运动就是生活 💪', is_verified: 0, is_private: 1, theme: 'dark' },
+    { id: crypto.randomUUID(), username: 'alice_wang', email: 'alice@example.com', password_hash: passwordHash, phone: '13800000001', avatar: 'https://picsum.photos/seed/alice/200/200', bio: '热爱生活，喜欢摄影和旅行 📸✈️', is_verified: 1, is_private: 0, theme: 'light' },
+    { id: crypto.randomUUID(), username: 'bob_zhang', email: 'bob@example.com', password_hash: passwordHash, phone: '13800000002', avatar: 'https://picsum.photos/seed/bob/200/200', bio: '全栈开发者，开源爱好者 💻', is_verified: 1, is_private: 0, theme: 'dark' },
+    { id: crypto.randomUUID(), username: 'charlie_li', email: 'charlie@example.com', password_hash: passwordHash, phone: '13800000003', avatar: 'https://picsum.photos/seed/charlie/200/200', bio: '音乐人 | 吉他手 🎸', is_verified: 0, is_private: 0, theme: 'light' },
+    { id: crypto.randomUUID(), username: 'diana_chen', email: 'diana@example.com', password_hash: passwordHash, phone: '13800000004', avatar: 'https://picsum.photos/seed/diana/200/200', bio: '美食博主，分享生活中的美味 🍜', is_verified: 1, is_private: 0, theme: 'light' },
+    { id: crypto.randomUUID(), username: 'evan_liu', email: 'evan@example.com', password_hash: passwordHash, phone: '13800000005', avatar: 'https://picsum.photos/seed/evan/200/200', bio: '健身达人 | 运动就是生活 💪', is_verified: 0, is_private: 1, theme: 'dark' },
   ]
 
   const insertUser = db.prepare(`
@@ -228,26 +228,26 @@ if (userCount.count === 0) {
     const [alice, bob, charlie, diana, evan] = users
 
     const posts = [
-      { id: crypto.randomUUID(), user_id: alice.id, content: '今天去了西湖，风景太美了！🌅', images: JSON.stringify(['https://picsum.photos/seed/p1/800/600']), tags: JSON.stringify(['旅行', '西湖']), location: '杭州·西湖', visibility: 'public', like_count: 12, comment_count: 3 },
-      { id: crypto.randomUUID(), user_id: alice.id, content: '分享一张日落照片，每一天都值得记录 🌇', images: JSON.stringify(['https://picsum.photos/seed/p2/800/600']), tags: JSON.stringify(['摄影', '日落']), location: '上海', visibility: 'public', like_count: 8, comment_count: 2 },
-      { id: crypto.randomUUID(), user_id: alice.id, content: '周末的咖啡时光 ☕', images: JSON.stringify(['https://picsum.photos/seed/p3/800/600']), tags: JSON.stringify(['咖啡', '周末']), location: '杭州', visibility: 'public', like_count: 5, comment_count: 1 },
+      { id: crypto.randomUUID(), user_id: alice.id, content: '今天去了西湖，风景太美了！🌅', images: JSON.stringify(['https://picsum.photos/seed/post1a/600/600', 'https://picsum.photos/seed/post1b/600/600']), tags: JSON.stringify(['旅行', '西湖']), location: '杭州·西湖', visibility: 'public', like_count: 12, comment_count: 3 },
+      { id: crypto.randomUUID(), user_id: alice.id, content: '分享一张日落照片，每一天都值得记录 🌇', images: JSON.stringify(['https://picsum.photos/seed/post2a/600/600']), tags: JSON.stringify(['摄影', '日落']), location: '上海', visibility: 'public', like_count: 8, comment_count: 2 },
+      { id: crypto.randomUUID(), user_id: alice.id, content: '周末的咖啡时光 ☕', images: JSON.stringify(['https://picsum.photos/seed/post3a/600/600', 'https://picsum.photos/seed/post3b/600/600', 'https://picsum.photos/seed/post3c/600/600']), tags: JSON.stringify(['咖啡', '周末']), location: '杭州', visibility: 'public', like_count: 5, comment_count: 1 },
       { id: crypto.randomUUID(), user_id: bob.id, content: '终于把新功能上线了！React 19 的新特性真的太棒了 🚀', images: JSON.stringify([]), tags: JSON.stringify(['编程', 'React']), location: '北京', visibility: 'public', like_count: 15, comment_count: 4 },
       { id: crypto.randomUUID(), user_id: bob.id, content: '开源项目突破 1000 star！感谢所有贡献者 🎉', images: JSON.stringify([]), tags: JSON.stringify(['开源', 'GitHub']), location: null, visibility: 'public', like_count: 20, comment_count: 6 },
       { id: crypto.randomUUID(), user_id: bob.id, content: 'TypeScript 5.4 发布了，新的类型推断功能很强大', images: JSON.stringify([]), tags: JSON.stringify(['TypeScript', '编程']), location: null, visibility: 'public', like_count: 10, comment_count: 2 },
-      { id: crypto.randomUUID(), user_id: bob.id, content: '分享一个 VS Code 插件推荐，提升开发效率 200%', images: JSON.stringify([]), tags: JSON.stringify(['工具', 'VSCode']), location: null, visibility: 'public', like_count: 7, comment_count: 1 },
-      { id: crypto.randomUUID(), user_id: charlie.id, content: '新歌录制完成，等混音中 🎵', images: JSON.stringify(['https://picsum.photos/seed/p4/800/600']), tags: JSON.stringify(['音乐', '原创']), location: '成都', visibility: 'public', like_count: 18, comment_count: 5 },
-      { id: crypto.randomUUID(), user_id: charlie.id, content: '今晚的演出太嗨了！感谢所有来的朋友们 🎤', images: JSON.stringify(['https://picsum.photos/seed/p5/800/600', 'https://picsum.photos/seed/p6/800/600']), tags: JSON.stringify(['演出', '现场']), location: '成都·小酒馆', visibility: 'public', like_count: 25, comment_count: 8 },
+      { id: crypto.randomUUID(), user_id: bob.id, content: '分享一个 VS Code 插件推荐，提升开发效率 200%', images: JSON.stringify(['https://picsum.photos/seed/post7a/600/600']), tags: JSON.stringify(['工具', 'VSCode']), location: null, visibility: 'public', like_count: 7, comment_count: 1 },
+      { id: crypto.randomUUID(), user_id: charlie.id, content: '新歌录制完成，等混音中 🎵', images: JSON.stringify(['https://picsum.photos/seed/post8a/600/600']), tags: JSON.stringify(['音乐', '原创']), location: '成都', visibility: 'public', like_count: 18, comment_count: 5 },
+      { id: crypto.randomUUID(), user_id: charlie.id, content: '今晚的演出太嗨了！感谢所有来的朋友们 🎤', images: JSON.stringify(['https://picsum.photos/seed/post9a/600/600', 'https://picsum.photos/seed/post9b/600/600']), tags: JSON.stringify(['演出', '现场']), location: '成都·小酒馆', visibility: 'public', like_count: 25, comment_count: 8 },
       { id: crypto.randomUUID(), user_id: charlie.id, content: '练琴日常，坚持就是胜利 💪🎸', images: JSON.stringify([]), tags: JSON.stringify(['吉他', '练习']), location: null, visibility: 'public', like_count: 6, comment_count: 1 },
-      { id: crypto.randomUUID(), user_id: diana.id, content: '自制意面，简单又美味！食谱在评论区 🍝', images: JSON.stringify(['https://picsum.photos/seed/p7/800/600']), tags: JSON.stringify(['美食', '意面', '食谱']), location: '广州', visibility: 'public', like_count: 30, comment_count: 10 },
-      { id: crypto.randomUUID(), user_id: diana.id, content: '探店｜这家日料真的绝了！三文鱼新鲜到哭 🍣', images: JSON.stringify(['https://picsum.photos/seed/p8/800/600', 'https://picsum.photos/seed/p9/800/600', 'https://picsum.photos/seed/p10/800/600']), tags: JSON.stringify(['探店', '日料', '美食']), location: '广州·天河区', visibility: 'public', like_count: 22, comment_count: 7 },
-      { id: crypto.randomUUID(), user_id: diana.id, content: '早餐打卡，元气满满的一天从早餐开始 🥐', images: JSON.stringify(['https://picsum.photos/seed/p11/800/600']), tags: JSON.stringify(['早餐', '美食']), location: '广州', visibility: 'public', like_count: 14, comment_count: 3 },
-      { id: crypto.randomUUID(), user_id: diana.id, content: '烘焙新手的第一蛋糕，虽然丑但很好吃 😂', images: JSON.stringify(['https://picsum.photos/seed/p12/800/600']), tags: JSON.stringify(['烘焙', '蛋糕']), location: null, visibility: 'public', like_count: 9, comment_count: 4 },
+      { id: crypto.randomUUID(), user_id: diana.id, content: '自制意面，简单又美味！食谱在评论区 🍝', images: JSON.stringify(['https://picsum.photos/seed/post11a/600/600', 'https://picsum.photos/seed/post11b/600/600']), tags: JSON.stringify(['美食', '意面', '食谱']), location: '广州', visibility: 'public', like_count: 30, comment_count: 10 },
+      { id: crypto.randomUUID(), user_id: diana.id, content: '探店｜这家日料真的绝了！三文鱼新鲜到哭 🍣', images: JSON.stringify(['https://picsum.photos/seed/post12a/600/600', 'https://picsum.photos/seed/post12b/600/600', 'https://picsum.photos/seed/post12c/600/600']), tags: JSON.stringify(['探店', '日料', '美食']), location: '广州·天河区', visibility: 'public', like_count: 22, comment_count: 7 },
+      { id: crypto.randomUUID(), user_id: diana.id, content: '早餐打卡，元气满满的一天从早餐开始 🥐', images: JSON.stringify(['https://picsum.photos/seed/post13a/600/600']), tags: JSON.stringify(['早餐', '美食']), location: '广州', visibility: 'public', like_count: 14, comment_count: 3 },
+      { id: crypto.randomUUID(), user_id: diana.id, content: '烘焙新手的第一蛋糕，虽然丑但很好吃 😂', images: JSON.stringify(['https://picsum.photos/seed/post14a/600/600', 'https://picsum.photos/seed/post14b/600/600']), tags: JSON.stringify(['烘焙', '蛋糕']), location: null, visibility: 'public', like_count: 9, comment_count: 4 },
       { id: crypto.randomUUID(), user_id: evan.id, content: '今日训练打卡：胸+三头 💪🔥', images: JSON.stringify([]), tags: JSON.stringify(['健身', '打卡']), location: '深圳·健身房', visibility: 'public', like_count: 11, comment_count: 2 },
-      { id: crypto.randomUUID(), user_id: evan.id, content: '晨跑 10km 完成，天气真好 🏃‍♂️', images: JSON.stringify(['https://picsum.photos/seed/p13/800/600']), tags: JSON.stringify(['跑步', '晨跑']), location: '深圳·深圳湾', visibility: 'public', like_count: 16, comment_count: 3 },
+      { id: crypto.randomUUID(), user_id: evan.id, content: '晨跑 10km 完成，天气真好 🏃‍♂️', images: JSON.stringify(['https://picsum.photos/seed/post16a/600/600']), tags: JSON.stringify(['跑步', '晨跑']), location: '深圳·深圳湾', visibility: 'public', like_count: 16, comment_count: 3 },
       { id: crypto.randomUUID(), user_id: evan.id, content: '蛋白粉测评，这款性价比最高！', images: JSON.stringify([]), tags: JSON.stringify(['健身', '补剂']), location: null, visibility: 'public', like_count: 8, comment_count: 2 },
       { id: crypto.randomUUID(), user_id: alice.id, content: '读书笔记：《人类简史》真的让人深思 📚', images: JSON.stringify([]), tags: JSON.stringify(['读书', '笔记']), location: null, visibility: 'public', like_count: 4, comment_count: 1 },
-      { id: crypto.randomUUID(), user_id: bob.id, content: '周末撸猫，程序员也需要放松 🐱', images: JSON.stringify(['https://picsum.photos/seed/p14/800/600']), tags: JSON.stringify(['猫', '周末']), location: '北京', visibility: 'public', like_count: 13, comment_count: 3 },
-      { id: crypto.randomUUID(), user_id: diana.id, content: '火锅季来了！你最喜欢什么锅底？🍲', images: JSON.stringify(['https://picsum.photos/seed/p15/800/600']), tags: JSON.stringify(['火锅', '美食', '投票']), location: '重庆', visibility: 'public', like_count: 19, comment_count: 9 },
+      { id: crypto.randomUUID(), user_id: bob.id, content: '周末撸猫，程序员也需要放松 🐱', images: JSON.stringify(['https://picsum.photos/seed/post19a/600/600', 'https://picsum.photos/seed/post19b/600/600']), tags: JSON.stringify(['猫', '周末']), location: '北京', visibility: 'public', like_count: 13, comment_count: 3 },
+      { id: crypto.randomUUID(), user_id: diana.id, content: '火锅季来了！你最喜欢什么锅底？🍲', images: JSON.stringify(['https://picsum.photos/seed/post20a/600/600']), tags: JSON.stringify(['火锅', '美食', '投票']), location: '重庆', visibility: 'public', like_count: 19, comment_count: 9 },
     ]
 
     for (const post of posts) {
@@ -396,13 +396,15 @@ if (userCount.count === 0) {
 
     const now = new Date()
     const stories = [
-      { id: crypto.randomUUID(), user_id: alice.id, type: 'image', media_url: 'https://picsum.photos/seed/s1/400/700', expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString() },
-      { id: crypto.randomUUID(), user_id: alice.id, type: 'image', media_url: 'https://picsum.photos/seed/s2/400/700', expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString() },
-      { id: crypto.randomUUID(), user_id: bob.id, type: 'image', media_url: 'https://picsum.photos/seed/s3/400/700', expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString() },
-      { id: crypto.randomUUID(), user_id: charlie.id, type: 'image', media_url: 'https://picsum.photos/seed/s4/400/700', expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString() },
-      { id: crypto.randomUUID(), user_id: diana.id, type: 'image', media_url: 'https://picsum.photos/seed/s5/400/700', expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString() },
-      { id: crypto.randomUUID(), user_id: diana.id, type: 'image', media_url: 'https://picsum.photos/seed/s6/400/700', expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString() },
-      { id: crypto.randomUUID(), user_id: evan.id, type: 'image', media_url: 'https://picsum.photos/seed/s7/400/700', expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString() },
+      { id: crypto.randomUUID(), user_id: alice.id, type: 'image', media_url: 'https://picsum.photos/seed/story1/400/700', expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString() },
+      { id: crypto.randomUUID(), user_id: alice.id, type: 'image', media_url: 'https://picsum.photos/seed/story2/400/700', expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString() },
+      { id: crypto.randomUUID(), user_id: bob.id, type: 'image', media_url: 'https://picsum.photos/seed/story3/400/700', expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString() },
+      { id: crypto.randomUUID(), user_id: bob.id, type: 'image', media_url: 'https://picsum.photos/seed/story3b/400/700', expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString() },
+      { id: crypto.randomUUID(), user_id: charlie.id, type: 'image', media_url: 'https://picsum.photos/seed/story4/400/700', expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString() },
+      { id: crypto.randomUUID(), user_id: diana.id, type: 'image', media_url: 'https://picsum.photos/seed/story5/400/700', expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString() },
+      { id: crypto.randomUUID(), user_id: diana.id, type: 'image', media_url: 'https://picsum.photos/seed/story6/400/700', expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString() },
+      { id: crypto.randomUUID(), user_id: evan.id, type: 'image', media_url: 'https://picsum.photos/seed/story7/400/700', expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString() },
+      { id: crypto.randomUUID(), user_id: evan.id, type: 'image', media_url: 'https://picsum.photos/seed/story7b/400/700', expires_at: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString() },
     ]
 
     for (const story of stories) {

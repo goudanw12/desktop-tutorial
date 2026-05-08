@@ -1,30 +1,57 @@
+import { useState, useEffect } from 'react';
 import { TrendingUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { get } from '@/lib/api';
 import UserCard from './UserCard';
 import type { UserProfile } from '@/types';
 
-const MOCK_USERS: UserProfile[] = [
-  { id: 'r1', username: '设计师小林', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=lin', bio: 'UI/UX 设计师', coverImage: '', followersCount: 1200, followingCount: 0, postsCount: 0 },
-  { id: 'r2', username: '摄影师阿杰', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=jie2', bio: '风光摄影师', coverImage: '', followersCount: 890, followingCount: 0, postsCount: 0 },
-  { id: 'r3', username: '美食家小美', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=mei2', bio: '美食博主', coverImage: '', followersCount: 5600, followingCount: 0, postsCount: 0 },
-];
-
-const TRENDING_TOPICS = [
-  { tag: '周末出行', count: '2.3万讨论' },
-  { tag: '美食探店', count: '1.8万讨论' },
-  { tag: '摄影技巧', count: '9,800讨论' },
-  { tag: '健身打卡', count: '7,500讨论' },
-  { tag: '读书分享', count: '5,200讨论' },
-];
-
 export default function Sidebar() {
+  const navigate = useNavigate();
+  const [recommendedUsers, setRecommendedUsers] = useState<UserProfile[]>([]);
+  const [trendingTopics, setTrendingTopics] = useState<{ name: string; count: number }[]>([]);
+
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      try {
+        const res = await get<{ success: boolean; data: { users: any[] } }>('/search/suggestions');
+        setRecommendedUsers((res.data?.users || []).map((u: any) => ({
+          id: u.id,
+          username: u.username,
+          email: '',
+          avatar: u.avatar || `https://picsum.photos/seed/${u.id}/200/200`,
+          bio: u.bio || '',
+          coverImage: '',
+          followersCount: 0,
+          followingCount: 0,
+          postsCount: 0,
+          isVerified: !!u.is_verified,
+        })));
+      } catch {}
+    };
+
+    const fetchTopics = async () => {
+      try {
+        const res = await get<{ success: boolean; data: { tags: { name: string; count: number }[] } }>('/search?q=');
+        setTrendingTopics(res.data?.tags || []);
+      } catch {}
+    };
+
+    fetchRecommendations();
+    fetchTopics();
+  }, []);
+
   return (
     <div className="space-y-4 sticky top-6">
       <div className="bg-white dark:bg-dark-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-dark-600">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">推荐关注</h3>
         <div className="divide-y divide-gray-100 dark:divide-dark-700">
-          {MOCK_USERS.map((user) => (
-            <UserCard key={user.id} user={user} />
-          ))}
+          {recommendedUsers.length === 0 ? (
+            <div className="py-4 text-center text-xs text-gray-400">暂无推荐</div>
+          ) : (
+            recommendedUsers.map((user) => (
+              <UserCard key={user.id} user={user} />
+            ))
+          )}
         </div>
       </div>
 
@@ -34,19 +61,27 @@ export default function Sidebar() {
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">热门话题</h3>
         </div>
         <div className="space-y-3">
-          {TRENDING_TOPICS.map((topic, idx) => (
-            <button key={topic.tag} className="w-full text-left group">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-300 dark:text-dark-500">{idx + 1}</span>
-                <div>
-                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-primary-500 transition-colors">
-                    #{topic.tag}
-                  </p>
-                  <p className="text-xs text-gray-400">{topic.count}</p>
+          {trendingTopics.length === 0 ? (
+            <div className="py-4 text-center text-xs text-gray-400">暂无话题</div>
+          ) : (
+            trendingTopics.slice(0, 5).map((topic, idx) => (
+              <button
+                key={topic.name}
+                onClick={() => navigate(`/topic/${topic.name}`)}
+                className="w-full text-left group"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-gray-300 dark:text-dark-500">{idx + 1}</span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-primary-500 transition-colors">
+                      #{topic.name}
+                    </p>
+                    <p className="text-xs text-gray-400">{topic.count} 条动态</p>
+                  </div>
                 </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            ))
+          )}
         </div>
       </div>
 

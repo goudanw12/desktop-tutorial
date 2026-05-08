@@ -12,6 +12,8 @@ import ChatDetail from '@/pages/ChatDetail';
 import Profile from '@/pages/Profile';
 import Notifications from '@/pages/Notifications';
 import Settings from '@/pages/Settings';
+import PostDetail from '@/pages/PostDetail';
+import Topic from '@/pages/Topic';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
@@ -59,6 +61,8 @@ export default function App() {
             <Route path="profile/:userId" element={<Profile />} />
             <Route path="notifications" element={<Notifications />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="post/:postId" element={<PostDetail />} />
+            <Route path="topic/:tag" element={<Topic />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

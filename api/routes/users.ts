@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from 'express'
 import crypto from 'crypto'
 import db from '../database.js'
 import { authMiddleware } from '../middleware/auth.js'
+import { upload } from '../middleware/upload.js'
 
 const router = Router()
 
@@ -29,7 +30,7 @@ router.get('/:userId', (req: Request, res: Response): void => {
   })
 })
 
-router.put('/profile', authMiddleware, (req: Request, res: Response): void => {
+router.put('/profile', authMiddleware, upload.single('avatar'), (req: Request, res: Response): void => {
   const { username, phone, avatar, bio, is_private, theme } = req.body
 
   if (username) {
@@ -51,7 +52,10 @@ router.put('/profile', authMiddleware, (req: Request, res: Response): void => {
 
   if (username !== undefined) { updates.push('username = ?'); values.push(username) }
   if (phone !== undefined) { updates.push('phone = ?'); values.push(phone) }
-  if (avatar !== undefined) { updates.push('avatar = ?'); values.push(avatar) }
+  if (req.file) {
+    updates.push('avatar = ?')
+    values.push(`/uploads/${req.file.filename}`)
+  } else if (avatar !== undefined) { updates.push('avatar = ?'); values.push(avatar) }
   if (bio !== undefined) { updates.push('bio = ?'); values.push(bio) }
   if (is_private !== undefined) { updates.push('is_private = ?'); values.push(is_private) }
   if (theme !== undefined) { updates.push('theme = ?'); values.push(theme) }

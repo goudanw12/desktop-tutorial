@@ -31,7 +31,7 @@ function mapApiPost(p: any): Post {
       id: p.user_id,
       username: p.username,
       email: '',
-      avatar: p.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.user_id}`,
+      avatar: p.avatar || `https://picsum.photos/seed/${p.user_id}/200/200`,
       bio: '',
       coverImage: '',
       followersCount: 0,
@@ -46,6 +46,9 @@ function mapApiPost(p: any): Post {
     sharesCount: p.share_count || 0,
     isLiked: !!p.is_liked,
     isBookmarked: !!p.is_bookmarked,
+    isOwner: !!p.is_owner,
+    tags: typeof p.tags === 'string' ? JSON.parse(p.tags || '[]') : (p.tags || []),
+    location: p.location || null,
     createdAt: p.created_at,
   };
 }
@@ -129,6 +132,10 @@ export default function Home() {
     setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...updates } : p)));
   };
 
+  const handleDeletePost = (postId: string) => {
+    setPosts((prev) => prev.filter((p) => p.id !== postId));
+  };
+
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-4 md:hidden">
@@ -159,7 +166,7 @@ export default function Home() {
         <div className="space-y-4">
           {posts.map((post, idx) => (
             <div key={post.id} ref={idx === posts.length - 1 ? lastPostRef : undefined}>
-              <PostCard post={post} onLike={handleLike} onBookmark={handleBookmark} onUpdate={handlePostUpdate} />
+              <PostCard post={post} onLike={handleLike} onBookmark={handleBookmark} onUpdate={handlePostUpdate} onDelete={handleDeletePost} />
             </div>
           ))}
 

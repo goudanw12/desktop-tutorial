@@ -51,6 +51,7 @@ router.get('/feed', optionalAuth, (req: Request, res: Response): void => {
     tags: JSON.parse(post.tags || '[]'),
     is_liked: !!post.is_liked,
     is_bookmarked: !!post.is_bookmarked,
+    is_owner: userId ? post.user_id === userId : false,
   }))
 
   res.json({
@@ -99,6 +100,7 @@ router.get('/:postId', optionalAuth, (req: Request, res: Response): void => {
   post.tags = JSON.parse(post.tags || '[]')
   post.is_liked = !!post.is_liked
   post.is_bookmarked = !!post.is_bookmarked
+  post.is_owner = userId ? post.user_id === userId : false
 
   res.json({ success: true, data: post })
 })

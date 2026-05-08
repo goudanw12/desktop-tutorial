@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Heart, MessageCircle, Share2, Bookmark, X, Send, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, X, Send, ChevronLeft, ChevronRight, MoreHorizontal, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { post as apiPost, get, del } from '@/lib/api';
@@ -11,6 +11,7 @@ interface PostCardProps {
   onLike?: (postId: string) => void;
   onBookmark?: (postId: string) => void;
   onUpdate?: (postId: string, updates: Partial<Post>) => void;
+  onDelete?: (postId: string) => void;
 }
 
 function formatTime(dateStr: string) {
@@ -25,12 +26,13 @@ function formatTime(dateStr: string) {
   return `${Math.floor(hours / 24)}天前`;
 }
 
-export default function PostCard({ post, onLike, onBookmark, onUpdate }: PostCardProps) {
+export default function PostCard({ post, onLike, onBookmark, onUpdate, onDelete }: PostCardProps) {
   const navigate = useNavigate();
   const [isLiked, setIsLiked] = useState(post.isLiked);
   const [isBookmarked, setIsBookmarked] = useState(post.isBookmarked);
   const [likesCount, setLikesCount] = useState(post.likesCount);
   const [heartAnim, setHeartAnim] = useState(false);
+  const [doubleTapHeart, setDoubleTapHeart] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentText, setCommentText] = useState('');
@@ -38,6 +40,8 @@ export default function PostCard({ post, onLike, onBookmark, onUpdate }: PostCar
   const [showShare, setShowShare] = useState(false);
   const [sharesCount, setSharesCount] = useState(post.sharesCount);
   const [lightboxIndex, setLightboxIndex] = useState(-1);
+  const [showMenu, setShowMenu] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleLike = async () => {
     const prevLiked = isLiked;
@@ -53,6 +57,13 @@ export default function PostCard({ post, onLike, onBookmark, onUpdate }: PostCar
         await apiPost(`/posts/${post.id}/like`);
       }
     } catch {}
+  };
+
+  const handleDoubleClick = () => {
+    if (isLiked) return;
+    setDoubleTapHeart(true);
+    setTimeout(() => setDoubleTapHeart(false), 800);
+    handleLike();
   };
 
   const handleBookmark = async () => {
@@ -155,6 +166,17 @@ export default function PostCard({ post, onLike, onBookmark, onUpdate }: PostCar
     }
   };
 
+  const handleDelete = async () => {
+    if (isDeleting) return;
+    setIsDeleting(true);
+    try {
+      await del(`/posts/${post.id}`);
+      onDelete?.(post.id);
+    } catch {}
+    setIsDeleting(false);
+    setShowMenu(false);
+  };
+
   const imageGridClass = (count: number) => {
     if (count === 1) return 'grid-cols-1';
     if (count === 2) return 'grid-cols-2';
@@ -184,54 +206,92 @@ export default function PostCard({ post, onLike, onBookmark, onUpdate }: PostCar
     <>
       <article className="bg-white dark:bg-dark-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-dark-600 animate-fadeIn">
         <div
-          className="flex items-center gap-3 mb-3 cursor-pointer"
-          onClick={() => navigate(`/profile/${post.userId}`)}
+          className="flex items-center gap-3 mb-3"
         >
-          <img
-            src={post.user.avatar}
-            alt={post.user.username}
-            className="w-10 h-10 rounded-full object-cover ring-2 ring-primary-100 dark:ring-primary-900/30"
-          />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{post.user.username}</p>
-              {post.user.isVerified && (
-                <span className="w-4 h-4 rounded-full bg-primary-500 text-white flex items-center justify-center text-[8px]">✓</span>
-              )}
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">{formatTime(post.createdAt)}</p>
-          </div>
-        </div>
-
-        {post.content && (
-          <p className="text-sm text-gray-800 dark:text-gray-200 mb-3 leading-relaxed whitespace-pre-wrap">
-            {post.content}
-          </p>
-        )}
-
-        {post.images.length > 0 && (
-          <div className={cn('grid gap-1 rounded-xl overflow-hidden mb-3', imageGridClass(post.images.length))}>
-            {post.images.slice(0, 4).map((img, idx) => (
-              <div
-                key={idx}
-                className="relative overflow-hidden cursor-pointer"
-                style={{ aspectRatio: post.images.length === 1 ? '16/10' : '1/1' }}
-                onClick={() => openLightbox(idx)}
-              >
-                <img
-                  src={img}
-                  alt=""
-                  className="w-full h-full object-cover hover:opacity-90 transition-opacity duration-200"
-                />
-                {idx === 3 && post.images.length > 4 && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <span className="text-white text-lg font-semibold">+{post.images.length - 4}</span>
-                  </div>
+          <div
+            className="flex items-center gap-3 flex-1 cursor-pointer"
+            onClick={() => navigate(`/profile/${post.userId}`)}
+          >
+            <img
+              src={post.user.avatar}
+              alt={post.user.username}
+              className="w-10 h-10 rounded-full object-cover ring-2 ring-primary-100 dark:ring-primary-900/30"
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{post.user.username}</p>
+                {post.user.isVerified && (
+                  <span className="w-4 h-4 rounded-full bg-primary-500 text-white flex items-center justify-center text-[8px]">✓</span>
                 )}
               </div>
-            ))}
+              <p className="text-xs text-gray-500 dark:text-gray-400">{formatTime(post.createdAt)}</p>
+            </div>
           </div>
-        )}
+
+          {post.isOwner && (
+            <div className="relative">
+              <button
+                onClick={() => setShowMenu(!showMenu)}
+                className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-dark-700 transition-colors"
+              >
+                <MoreHorizontal className="w-5 h-5 text-gray-500" />
+              </button>
+              {showMenu && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+                  <div className="absolute right-0 top-8 bg-white dark:bg-dark-700 rounded-xl shadow-lg border border-gray-100 dark:border-dark-600 py-1 z-20 min-w-[140px] animate-slideUp">
+                    <button
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      {isDeleting ? '删除中...' : '删除动态'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div onDoubleClick={handleDoubleClick} className="relative select-none">
+          {post.content && (
+            <p className="text-sm text-gray-800 dark:text-gray-200 mb-3 leading-relaxed whitespace-pre-wrap">
+              {post.content}
+            </p>
+          )}
+
+          {post.images.length > 0 && (
+            <div className={cn('grid gap-1 rounded-xl overflow-hidden mb-3', imageGridClass(post.images.length))}>
+              {post.images.slice(0, 4).map((img, idx) => (
+                <div
+                  key={idx}
+                  className="relative overflow-hidden cursor-pointer"
+                  style={{ aspectRatio: post.images.length === 1 ? '16/10' : '1/1' }}
+                  onClick={() => openLightbox(idx)}
+                >
+                  <img
+                    src={img}
+                    alt=""
+                    className="w-full h-full object-cover hover:opacity-90 transition-opacity duration-200"
+                  />
+                  {idx === 3 && post.images.length > 4 && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <span className="text-white text-lg font-semibold">+{post.images.length - 4}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {doubleTapHeart && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+              <Heart className="w-24 h-24 text-primary-500 fill-primary-500 animate-heartBeat drop-shadow-lg" />
+            </div>
+          )}
+        </div>
 
         <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-dark-700">
           <button
@@ -285,7 +345,7 @@ export default function PostCard({ post, onLike, onBookmark, onUpdate }: PostCar
 
       {lightboxIndex >= 0 && (
         <div
-          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center"
+          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center animate-fadeIn"
           onClick={closeLightbox}
         >
           <button
@@ -307,7 +367,7 @@ export default function PostCard({ post, onLike, onBookmark, onUpdate }: PostCar
           <img
             src={post.images[lightboxIndex]}
             alt=""
-            className="max-w-[90vw] max-h-[85vh] object-contain animate-fadeIn"
+            className="max-w-[90vw] max-h-[85vh] object-contain"
             onClick={(e) => e.stopPropagation()}
           />
 
@@ -410,13 +470,6 @@ export default function PostCard({ post, onLike, onBookmark, onUpdate }: PostCar
               >
                 <span className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-lg">📢</span>
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">分享到微博</span>
-              </button>
-              <button
-                onClick={() => handleShare('qq')}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 dark:hover:bg-dark-700 transition-colors"
-              >
-                <span className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-lg">🐧</span>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">分享到QQ</span>
               </button>
             </div>
           </div>

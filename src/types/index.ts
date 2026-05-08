@@ -22,6 +22,9 @@ export interface Post {
   sharesCount: number;
   isLiked: boolean;
   isBookmarked: boolean;
+  isOwner: boolean;
+  tags: string[];
+  location: string | null;
   createdAt: string;
 }
 
@@ -64,6 +67,8 @@ export interface Notification {
   content: string;
   isRead: boolean;
   createdAt: string;
+  postId?: string;
+  postImage?: string;
 }
 
 export interface Story {
@@ -72,4 +77,26 @@ export interface Story {
   image: string;
   createdAt: string;
   isViewed: boolean;
+}
+
+export interface StoryGroup {
+  user: {
+    id: string;
+    username: string;
+    avatar: string;
+    is_verified: boolean;
+  };
+  stories: {
+    id: string;
+    type: string;
+    media_url: string;
+    created_at: string;
+    expires_at: string;
+  }[];
+}
+
+export interface SearchResult {
+  users: any[];
+  posts: any[];
+  tags: { name: string; count: number }[];
 }

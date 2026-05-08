@@ -1,43 +1,101 @@
-import { useState } from 'react';
-import { CheckCheck } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { CheckCheck, Heart, MessageCircle, UserPlus, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import NotificationItem from '@/components/NotificationItem';
+import { useNavigate } from 'react-router-dom';
+import { get, put } from '@/lib/api';
 import type { Notification } from '@/types';
-
-const MOCK_NOTIFICATIONS: Notification[] = [
-  { id: 'n1', type: 'like', user: { id: 'u1', username: '小红', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=hong', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, content: '小红 赞了你的动态', isRead: false, createdAt: new Date(Date.now() - 300000).toISOString() },
-  { id: 'n2', type: 'comment', user: { id: 'u2', username: '阿杰', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=jie', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, content: '阿杰 评论了你的动态：太棒了！', isRead: false, createdAt: new Date(Date.now() - 1800000).toISOString() },
-  { id: 'n3', type: 'follow', user: { id: 'u3', username: '美美', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=mei', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, content: '美美 关注了你', isRead: false, createdAt: new Date(Date.now() - 3600000).toISOString() },
-  { id: 'n4', type: 'like', user: { id: 'u4', username: '大伟', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=wei', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, content: '大伟 赞了你的评论', isRead: true, createdAt: new Date(Date.now() - 7200000).toISOString() },
-  { id: 'n5', type: 'system', content: '你的账号已通过实名认证', isRead: true, createdAt: new Date(Date.now() - 86400000).toISOString() },
-  { id: 'n6', type: 'comment', user: { id: 'u5', username: '小芳', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=fang', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, content: '小芳 回复了你的评论：同意！', isRead: true, createdAt: new Date(Date.now() - 172800000).toISOString() },
-  { id: 'n7', type: 'follow', user: { id: 'u6', username: '老王', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=wang', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, content: '老王 关注了你', isRead: true, createdAt: new Date(Date.now() - 259200000).toISOString() },
-];
 
 const TABS = [
   { key: 'all', label: '全部' },
   { key: 'like', label: '点赞' },
   { key: 'comment', label: '评论' },
   { key: 'follow', label: '关注' },
-  { key: 'system', label: '系统' },
 ];
 
+function formatTime(dateStr: string) {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return '刚刚';
+  if (minutes < 60) return `${minutes}分钟前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}小时前`;
+  return `${Math.floor(hours / 24)}天前`;
+}
+
+const typeConfig = {
+  like: { icon: Heart, color: 'text-primary-500 bg-primary-50 dark:bg-primary-900/20' },
+  comment: { icon: MessageCircle, color: 'text-mint-500 bg-mint-50 dark:bg-mint-900/20' },
+  follow: { icon: UserPlus, color: 'text-blue-500 bg-blue-50 dark:bg-blue-900/20' },
+  system: { icon: Info, color: 'text-warm-600 bg-warm-50 dark:bg-warm-900/20' },
+};
+
 export default function Notifications() {
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const navigate = useNavigate();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [activeTab, setActiveTab] = useState('all');
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const res = await get<{ success: boolean; data: { notifications: any[] } }>('/notifications');
+        const mapped = (res.data?.notifications || []).map((n: any) => ({
+          id: n.id,
+          type: n.type as Notification['type'],
+          user: n.from_username ? {
+            id: n.from_user_id || '',
+            username: n.from_username,
+            email: '',
+            avatar: n.from_avatar || `https://picsum.photos/seed/${n.from_user_id}/200/200`,
+            bio: '',
+            coverImage: '',
+            followersCount: 0,
+            followingCount: 0,
+            postsCount: 0,
+          } : undefined,
+          content: n.content || '',
+          isRead: !!n.is_read,
+          createdAt: n.created_at,
+          postId: n.post_id || undefined,
+        }));
+        setNotifications(mapped);
+      } catch {}
+      setIsLoading(false);
+    };
+    fetchNotifications();
+  }, []);
 
   const filteredNotifications = activeTab === 'all'
     ? notifications
     : notifications.filter((n) => n.type === activeTab);
 
-  const handleRead = (id: string) => {
+  const handleRead = async (id: string) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
     );
+    try {
+      await put('/notifications/read', { notificationIds: [id] });
+    } catch {}
   };
 
-  const handleReadAll = () => {
+  const handleReadAll = async () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    try {
+      await put('/notifications/read-all');
+    } catch {}
+  };
+
+  const handleNotificationClick = (notification: Notification) => {
+    if (!notification.isRead) {
+      handleRead(notification.id);
+    }
+    if (notification.type === 'follow' && notification.user) {
+      navigate(`/profile/${notification.user.id}`);
+    } else if ((notification.type === 'like' || notification.type === 'comment') && notification.postId) {
+      navigate(`/post/${notification.postId}`);
+    }
   };
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
@@ -74,21 +132,61 @@ export default function Notifications() {
         ))}
       </div>
 
-      <div className="bg-white dark:bg-dark-800 rounded-2xl shadow-sm border border-gray-100 dark:border-dark-600 divide-y divide-gray-100 dark:divide-dark-700">
-        {filteredNotifications.map((notification) => (
-          <NotificationItem
-            key={notification.id}
-            notification={notification}
-            onRead={handleRead}
-          />
-        ))}
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-dark-800 rounded-2xl shadow-sm border border-gray-100 dark:border-dark-600 divide-y divide-gray-100 dark:divide-dark-700">
+          {filteredNotifications.map((notification) => {
+            const config = typeConfig[notification.type] || typeConfig.system;
+            const Icon = config.icon;
+            return (
+              <div
+                key={notification.id}
+                onClick={() => handleNotificationClick(notification)}
+                className={cn(
+                  'flex items-start gap-3 p-4 transition-all duration-200 cursor-pointer',
+                  notification.isRead
+                    ? 'bg-white dark:bg-dark-800'
+                    : 'bg-primary-50/50 dark:bg-primary-900/10 hover:bg-primary-50 dark:hover:bg-primary-900/20'
+                )}
+              >
+                <div className={cn('w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0', config.color)}>
+                  <Icon className="w-5 h-5" />
+                </div>
 
-        {filteredNotifications.length === 0 && (
-          <div className="p-8 text-center text-gray-400">
-            暂无通知
-          </div>
-        )}
-      </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    {notification.user && (
+                      <img
+                        src={notification.user.avatar}
+                        alt={notification.user.username}
+                        className="w-6 h-6 rounded-full object-cover flex-shrink-0"
+                      />
+                    )}
+                    <p className="text-sm text-gray-800 dark:text-gray-200">
+                      {notification.user && (
+                        <span className="font-medium">{notification.user.username}</span>
+                      )}
+                      {' '}{notification.content}
+                    </p>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">{formatTime(notification.createdAt)}</p>
+                </div>
+
+                {!notification.isRead && (
+                  <div className="w-2 h-2 rounded-full bg-primary-500 flex-shrink-0 mt-2" />
+                )}
+              </div>
+            );
+          })}
+
+          {filteredNotifications.length === 0 && (
+            <div className="p-8 text-center text-gray-400">暂无通知</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

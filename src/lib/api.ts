@@ -46,7 +46,7 @@ export async function post<T>(url: string, data?: unknown): Promise<T> {
 export async function put<T>(url: string, data?: unknown): Promise<T> {
   return request<T>(url, {
     method: 'PUT',
-    body: data ? JSON.stringify(data) : undefined,
+    body: data instanceof FormData ? data : data ? JSON.stringify(data) : undefined,
   });
 }
 

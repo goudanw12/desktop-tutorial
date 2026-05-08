@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
-import { Settings, Edit3, Image as ImageIcon, Grid3X3, ArrowLeft, UserPlus, UserCheck, X, Save } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Settings, Edit3, Image as ImageIcon, Grid3X3, ArrowLeft, UserPlus, UserCheck, X, Save, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { get, post as apiPost, del, put } from '@/lib/api';
 import PostCard from '@/components/PostCard';
+import UserCard from '@/components/UserCard';
 import type { Post, UserProfile } from '@/types';
 
 export default function Profile() {
@@ -21,6 +22,13 @@ export default function Profile() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState({ username: '', bio: '', phone: '' });
   const [isSaving, setIsSaving] = useState(false);
+  const [showFollowersModal, setShowFollowersModal] = useState(false);
+  const [showFollowingModal, setShowFollowingModal] = useState(false);
+  const [followers, setFollowers] = useState<UserProfile[]>([]);
+  const [following, setFollowing] = useState<UserProfile[]>([]);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isOwnProfile = !userId || userId === currentUser?.id;
   const targetUserId = userId || currentUser?.id;
@@ -37,7 +45,7 @@ export default function Profile() {
           id: u.id,
           username: u.username,
           email: u.email || '',
-          avatar: u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.id}`,
+          avatar: u.avatar || `https://picsum.photos/seed/${u.id}/200/200`,
           bio: u.bio || '',
           coverImage: `https://picsum.photos/seed/cover${u.id}/800/300`,
           followersCount: u.followerCount || 0,
@@ -60,7 +68,7 @@ export default function Profile() {
             id: p.user_id,
             username: p.username,
             email: '',
-            avatar: p.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.user_id}`,
+            avatar: p.avatar || `https://picsum.photos/seed/${p.user_id}/200/200`,
             bio: '',
             coverImage: '',
             followersCount: 0,
@@ -75,6 +83,9 @@ export default function Profile() {
           sharesCount: p.share_count || 0,
           isLiked: !!p.is_liked,
           isBookmarked: !!p.is_bookmarked,
+          isOwner: !!p.is_owner,
+          tags: typeof p.tags === 'string' ? JSON.parse(p.tags || '[]') : (p.tags || []),
+          location: p.location || null,
           createdAt: p.created_at,
         }));
         setPosts(mappedPosts);
@@ -121,6 +132,10 @@ export default function Profile() {
     setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...updates } : p)));
   };
 
+  const handleDeletePost = (postId: string) => {
+    setPosts((prev) => prev.filter((p) => p.id !== postId));
+  };
+
   const handleOpenEdit = () => {
     if (profileUser) {
       setEditForm({
@@ -128,23 +143,92 @@ export default function Profile() {
         bio: profileUser.bio,
         phone: '',
       });
+      setAvatarPreview(null);
+      setAvatarFile(null);
     }
     setShowEditModal(true);
+  };
+
+  const handleAvatarSelect = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
-      await put('/users/profile', {
-        username: editForm.username,
-        bio: editForm.bio,
-        phone: editForm.phone || undefined,
-      });
+      const formData = new FormData();
+      if (editForm.username) formData.append('username', editForm.username);
+      if (editForm.bio) formData.append('bio', editForm.bio);
+      if (editForm.phone) formData.append('phone', editForm.phone);
+      if (avatarFile) formData.append('avatar', avatarFile);
+
+      await put('/users/profile', formData);
       await fetchMe();
-      setProfileUser((prev) => prev ? { ...prev, username: editForm.username, bio: editForm.bio } : prev);
+      setProfileUser((prev) => prev ? { ...prev, username: editForm.username, bio: editForm.bio, avatar: avatarPreview || prev.avatar } : prev);
       setShowEditModal(false);
+      setAvatarPreview(null);
+      setAvatarFile(null);
     } catch {}
     setIsSaving(false);
+  };
+
+  const fetchFollowers = async () => {
+    if (!targetUserId) return;
+    try {
+      const res = await get<{ success: boolean; data: { followers: any[] } }>(`/users/${targetUserId}/followers`);
+      setFollowers((res.data?.followers || []).map((u: any) => ({
+        id: u.id,
+        username: u.username,
+        email: '',
+        avatar: u.avatar || `https://picsum.photos/seed/${u.id}/200/200`,
+        bio: u.bio || '',
+        coverImage: '',
+        followersCount: 0,
+        followingCount: 0,
+        postsCount: 0,
+        isVerified: !!u.is_verified,
+      })));
+    } catch {}
+  };
+
+  const fetchFollowing = async () => {
+    if (!targetUserId) return;
+    try {
+      const res = await get<{ success: boolean; data: { following: any[] } }>(`/users/${targetUserId}/following`);
+      setFollowing((res.data?.following || []).map((u: any) => ({
+        id: u.id,
+        username: u.username,
+        email: '',
+        avatar: u.avatar || `https://picsum.photos/seed/${u.id}/200/200`,
+        bio: u.bio || '',
+        coverImage: '',
+        followersCount: 0,
+        followingCount: 0,
+        postsCount: 0,
+        isVerified: !!u.is_verified,
+      })));
+    } catch {}
+  };
+
+  const handleOpenFollowers = () => {
+    setShowFollowersModal(true);
+    fetchFollowers();
+  };
+
+  const handleOpenFollowing = () => {
+    setShowFollowingModal(true);
+    fetchFollowing();
   };
 
   if (isLoading) {
@@ -196,11 +280,13 @@ export default function Profile() {
 
         <div className="px-4 md:px-6 -mt-16 relative z-10">
           <div className="flex items-end gap-4">
-            <img
-              src={displayUser.avatar}
-              alt={displayUser.username}
-              className="w-28 h-28 md:w-32 md:h-32 rounded-full object-cover border-4 border-white dark:border-dark-800 shadow-lg"
-            />
+            <div className="relative">
+              <img
+                src={displayUser.avatar}
+                alt={displayUser.username}
+                className="w-28 h-28 md:w-32 md:h-32 rounded-full object-cover border-4 border-white dark:border-dark-800 shadow-lg"
+              />
+            </div>
             <div className="pb-2 flex-1">
               <div className="flex items-center gap-3">
                 <h1 className="font-display text-xl font-bold text-gray-900 dark:text-white">{displayUser.username}</h1>
@@ -254,14 +340,14 @@ export default function Profile() {
               <p className="font-display text-lg font-bold text-gray-900 dark:text-white">{displayUser.postsCount}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">动态</p>
             </div>
-            <div className="text-center">
+            <button onClick={handleOpenFollowing} className="text-center">
               <p className="font-display text-lg font-bold text-gray-900 dark:text-white">{displayUser.followingCount}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">关注</p>
-            </div>
-            <div className="text-center">
+            </button>
+            <button onClick={handleOpenFollowers} className="text-center">
               <p className="font-display text-lg font-bold text-gray-900 dark:text-white">{displayUser.followersCount}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">粉丝</p>
-            </div>
+            </button>
           </div>
         </div>
       </div>
@@ -303,7 +389,7 @@ export default function Profile() {
             ) : (
               <div className="space-y-4 max-w-2xl">
                 {posts.map((p) => (
-                  <PostCard key={p.id} post={p} onUpdate={handlePostUpdate} />
+                  <PostCard key={p.id} post={p} onUpdate={handlePostUpdate} onDelete={handleDeletePost} />
                 ))}
               </div>
             )
@@ -339,6 +425,28 @@ export default function Profile() {
             </div>
 
             <div className="p-4 space-y-4">
+              <div className="flex flex-col items-center gap-3">
+                <div className="relative">
+                  <img
+                    src={avatarPreview || profileUser?.avatar || ''}
+                    alt=""
+                    className="w-20 h-20 rounded-full object-cover border-2 border-gray-200 dark:border-dark-600"
+                  />
+                  <button
+                    onClick={handleAvatarSelect}
+                    className="absolute bottom-0 right-0 w-7 h-7 bg-primary-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-primary-600 transition-all"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                  />
+                </div>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">用户名</label>
                 <input
@@ -382,6 +490,60 @@ export default function Profile() {
                 <Save className="w-4 h-4" />
                 {isSaving ? '保存中...' : '保存'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showFollowersModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center" onClick={() => setShowFollowersModal(false)}>
+          <div
+            className="bg-white dark:bg-dark-800 w-full md:max-w-md md:rounded-2xl rounded-t-2xl max-h-[70vh] flex flex-col animate-slideUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-600">
+              <h3 className="font-display font-semibold text-gray-900 dark:text-white">粉丝 ({displayUser.followersCount})</h3>
+              <button onClick={() => setShowFollowersModal(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-full">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              {followers.length === 0 ? (
+                <div className="text-center py-8 text-gray-400 text-sm">暂无粉丝</div>
+              ) : (
+                <div className="divide-y divide-gray-100 dark:divide-dark-700">
+                  {followers.map((u) => (
+                    <UserCard key={u.id} user={u} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showFollowingModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center" onClick={() => setShowFollowingModal(false)}>
+          <div
+            className="bg-white dark:bg-dark-800 w-full md:max-w-md md:rounded-2xl rounded-t-2xl max-h-[70vh] flex flex-col animate-slideUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-600">
+              <h3 className="font-display font-semibold text-gray-900 dark:text-white">关注 ({displayUser.followingCount})</h3>
+              <button onClick={() => setShowFollowingModal(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-full">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              {following.length === 0 ? (
+                <div className="text-center py-8 text-gray-400 text-sm">暂无关注</div>
+              ) : (
+                <div className="divide-y divide-gray-100 dark:divide-dark-700">
+                  {following.map((u) => (
+                    <UserCard key={u.id} user={u} />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

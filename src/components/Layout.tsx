@@ -1,7 +1,9 @@
+import { useState, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Compass, PlusCircle, MessageCircle, Bell, Settings, User, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
+import { get } from '@/lib/api';
 import Sidebar from './Sidebar';
 
 const navItems = [
@@ -16,6 +18,19 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await get<{ success: boolean; data: { unreadCount: number } }>('/notifications');
+        setUnreadNotifications(res.data?.unreadCount || 0);
+      } catch {}
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleNavClick = (path: string) => {
     navigate(path);
@@ -53,15 +68,13 @@ export default function Layout() {
               >
                 <item.icon className={cn('w-5 h-5', isActive && 'text-primary-500')} />
                 <span>{item.label}</span>
-                {item.path === '/notifications' && (
+                {item.path === '/notifications' && unreadNotifications > 0 && (
                   <span className="ml-auto w-5 h-5 bg-primary-500 text-white text-xs rounded-full flex items-center justify-center">
-                    3
+                    {unreadNotifications > 9 ? '9+' : unreadNotifications}
                   </span>
                 )}
                 {item.path === '/messages' && (
-                  <span className="ml-auto w-5 h-5 bg-mint-500 text-white text-xs rounded-full flex items-center justify-center">
-                    2
-                  </span>
+                  <span className="ml-auto w-2 h-2 bg-mint-500 rounded-full" />
                 )}
               </button>
             );
@@ -118,6 +131,11 @@ export default function Layout() {
         <h1 className="font-display text-xl font-bold bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">
           Social
         </h1>
+        {unreadNotifications > 0 && (
+          <span className="ml-auto w-5 h-5 bg-primary-500 text-white text-xs rounded-full flex items-center justify-center">
+            {unreadNotifications > 9 ? '9+' : unreadNotifications}
+          </span>
+        )}
       </header>
 
       <main className="md:ml-64 pt-14 md:pt-0 pb-20 md:pb-0">
@@ -139,12 +157,20 @@ export default function Layout() {
               key={item.path}
               onClick={() => handleNavClick(item.path)}
               className={cn(
-                'flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all duration-200',
+                'flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all duration-200 relative',
                 isActive ? 'text-primary-500' : 'text-gray-500 dark:text-gray-400'
               )}
             >
               <item.icon className={cn('w-5 h-5', item.path === '/publish' && 'w-7 h-7')} />
               <span className="text-[10px]">{item.label}</span>
+              {item.path === '/notifications' && unreadNotifications > 0 && (
+                <span className="absolute -top-0.5 right-1 w-4 h-4 bg-primary-500 text-white text-[9px] rounded-full flex items-center justify-center">
+                  {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                </span>
+              )}
+              {item.path === '/messages' && (
+                <span className="absolute top-0 right-2 w-2 h-2 bg-mint-500 rounded-full" />
+              )}
             </button>
           );
         })}
