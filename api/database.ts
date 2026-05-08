@@ -123,6 +123,18 @@ db.exec(`
     UNIQUE(chat_id, user_id)
   );
 
+  CREATE TABLE IF NOT EXISTS verifications (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    real_name TEXT NOT NULL,
+    id_number TEXT NOT NULL,
+    id_type TEXT DEFAULT 'id_card',
+    status TEXT DEFAULT 'pending',
+    reason TEXT,
+    submitted_at TEXT DEFAULT (datetime('now')),
+    reviewed_at TEXT
+  );
+
   CREATE TABLE IF NOT EXISTS notifications (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

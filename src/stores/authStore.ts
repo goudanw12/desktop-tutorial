@@ -52,9 +52,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       const data = await post<{ success: boolean; data: { token: string; user: any } }>('/auth/login', { email, password });
       localStorage.setItem('token', data.data.token);
       set({ user: mapApiUser(data.data.user), token: data.data.token, isAuthenticated: true, isLoading: false });
-    } catch {
-      localStorage.setItem('token', 'mock-token');
-      set({ user: MOCK_USER, token: 'mock-token', isAuthenticated: true, isLoading: false });
+    } catch (err: any) {
+      set({ isLoading: false });
+      throw err;
     }
   },
 
@@ -64,10 +64,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       const data = await post<{ success: boolean; data: { token: string; user: any } }>('/auth/register', { username, email, password });
       localStorage.setItem('token', data.data.token);
       set({ user: mapApiUser(data.data.user), token: data.data.token, isAuthenticated: true, isLoading: false });
-    } catch {
-      const newUser: UserProfile = { ...MOCK_USER, username, email };
-      localStorage.setItem('token', 'mock-token');
-      set({ user: newUser, token: 'mock-token', isAuthenticated: true, isLoading: false });
+    } catch (err: any) {
+      set({ isLoading: false });
+      throw err;
     }
   },
 

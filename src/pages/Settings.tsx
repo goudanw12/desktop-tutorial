@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { ArrowLeft, User, Lock, Shield, Palette, LogOut, ChevronRight, X, Save, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, User, Lock, Shield, Palette, LogOut, ChevronRight, X, Save, Eye, EyeOff, ShieldCheck, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useThemeStore } from '@/stores/themeStore';
-import { put, post as apiPost } from '@/lib/api';
+import { put, post as apiPost, get } from '@/lib/api';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -13,6 +13,10 @@ export default function Settings() {
 
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showVerify, setShowVerify] = useState(false);
+  const [verifyStatus, setVerifyStatus] = useState<{ status: string; reason?: string; realName?: string; submittedAt?: string } | null>(null);
+  const [verifyForm, setVerifyForm] = useState({ realName: '', idNumber: '', idType: 'id_card' });
+  const [verifyLoading, setVerifyLoading] = useState(false);
   const [editForm, setEditForm] = useState({
     username: user?.username || '',
     bio: user?.bio || '',
@@ -85,6 +89,46 @@ export default function Settings() {
     } catch {}
   };
 
+  const handleOpenVerify = async () => {
+    try {
+      const res = await get<{ success: boolean; data: any }>('/auth/verify');
+      if (res.data) {
+        setVerifyStatus({
+          status: res.data.status,
+          reason: res.data.reason,
+          realName: res.data.real_name,
+          submittedAt: res.data.submitted_at,
+        });
+      } else {
+        setVerifyStatus(null);
+      }
+    } catch {
+      setVerifyStatus(null);
+    }
+    setShowVerify(true);
+  };
+
+  const handleSubmitVerify = async () => {
+    if (!verifyForm.realName || !verifyForm.idNumber) {
+      setMessage('请填写姓名和证件号');
+      return;
+    }
+    setVerifyLoading(true);
+    setMessage('');
+    try {
+      await apiPost('/auth/verify', {
+        realName: verifyForm.realName,
+        idNumber: verifyForm.idNumber,
+        idType: verifyForm.idType,
+      });
+      setVerifyStatus({ status: 'pending', realName: verifyForm.realName });
+      setMessage('认证申请已提交');
+    } catch (err: any) {
+      setMessage(err.message || '提交失败');
+    }
+    setVerifyLoading(false);
+  };
+
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
       <div className="md:hidden flex items-center gap-3 mb-4">
@@ -122,6 +166,24 @@ export default function Settings() {
             </span>
             <span className="flex-1 text-left text-sm text-gray-700 dark:text-gray-300">修改密码</span>
             <ChevronRight className="w-4 h-4 text-gray-400" />
+          </button>
+
+          <button
+            onClick={handleOpenVerify}
+            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 dark:hover:bg-dark-700 transition-colors"
+          >
+            <span className="w-8 h-8 rounded-lg bg-mint-50 dark:bg-mint-900/20 flex items-center justify-center">
+              <ShieldCheck className="w-4 h-4 text-mint-600" />
+            </span>
+            <span className="flex-1 text-left text-sm text-gray-700 dark:text-gray-300">实名认证</span>
+            {user?.isVerified ? (
+              <span className="flex items-center gap-1 text-xs text-mint-600">
+                <CheckCircle className="w-3.5 h-3.5" />
+                已认证
+              </span>
+            ) : (
+              <ChevronRight className="w-4 h-4 text-gray-400" />
+            )}
           </button>
         </div>
 
@@ -335,6 +397,125 @@ export default function Settings() {
                 {isSaving ? '修改中...' : '确认修改'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showVerify && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => { setShowVerify(false); setMessage(''); }}>
+          <div className="bg-white dark:bg-dark-800 w-full max-w-md rounded-2xl animate-slideUp" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-dark-600">
+              <h3 className="font-display font-semibold text-gray-900 dark:text-white">实名认证</h3>
+              <button onClick={() => { setShowVerify(false); setMessage(''); }} className="p-1 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-full">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              {verifyStatus?.status === 'approved' ? (
+                <div className="text-center py-6">
+                  <CheckCircle className="w-16 h-16 text-mint-500 mx-auto mb-3" />
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">已完成实名认证</h4>
+                  <p className="text-sm text-gray-500">认证姓名：{verifyStatus.realName}</p>
+                </div>
+              ) : verifyStatus?.status === 'pending' ? (
+                <div className="text-center py-6">
+                  <Clock className="w-16 h-16 text-yellow-500 mx-auto mb-3" />
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">认证审核中</h4>
+                  <p className="text-sm text-gray-500">您的实名认证申请正在审核中，请耐心等待</p>
+                  {verifyStatus.submittedAt && (
+                    <p className="text-xs text-gray-400 mt-2">提交时间：{new Date(verifyStatus.submittedAt).toLocaleString('zh-CN')}</p>
+                  )}
+                </div>
+              ) : verifyStatus?.status === 'rejected' ? (
+                <div className="text-center py-4">
+                  <XCircle className="w-16 h-16 text-red-500 mx-auto mb-3" />
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">认证未通过</h4>
+                  {verifyStatus.reason && <p className="text-sm text-red-500 mb-4">原因：{verifyStatus.reason}</p>}
+                  <p className="text-sm text-gray-500 mb-4">请修改后重新提交</p>
+                  <div className="space-y-3 text-left">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">真实姓名</label>
+                      <input
+                        value={verifyForm.realName}
+                        onChange={(e) => setVerifyForm((prev) => ({ ...prev, realName: e.target.value }))}
+                        placeholder="请输入真实姓名"
+                        className="w-full px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-dark-700 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">证件类型</label>
+                      <select
+                        value={verifyForm.idType}
+                        onChange={(e) => setVerifyForm((prev) => ({ ...prev, idType: e.target.value }))}
+                        className="w-full px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-dark-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+                      >
+                        <option value="id_card">身份证</option>
+                        <option value="passport">护照</option>
+                        <option value="hk_macau">港澳通行证</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">证件号码</label>
+                      <input
+                        value={verifyForm.idNumber}
+                        onChange={(e) => setVerifyForm((prev) => ({ ...prev, idNumber: e.target.value }))}
+                        placeholder="请输入证件号码"
+                        className="w-full px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-dark-700 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl mb-2">
+                    <ShieldCheck className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                    <p className="text-xs text-blue-600 dark:text-blue-400">实名认证后可获得认证标识，提升账号可信度</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">真实姓名</label>
+                    <input
+                      value={verifyForm.realName}
+                      onChange={(e) => setVerifyForm((prev) => ({ ...prev, realName: e.target.value }))}
+                      placeholder="请输入真实姓名"
+                      className="w-full px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-dark-700 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">证件类型</label>
+                    <select
+                      value={verifyForm.idType}
+                      onChange={(e) => setVerifyForm((prev) => ({ ...prev, idType: e.target.value }))}
+                      className="w-full px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-dark-700 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+                    >
+                      <option value="id_card">身份证</option>
+                      <option value="passport">护照</option>
+                      <option value="hk_macau">港澳通行证</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">证件号码</label>
+                    <input
+                      value={verifyForm.idNumber}
+                      onChange={(e) => setVerifyForm((prev) => ({ ...prev, idNumber: e.target.value }))}
+                      placeholder="请输入证件号码"
+                      className="w-full px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-dark-700 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+                    />
+                  </div>
+                </div>
+              )}
+              {message && (
+                <p className={cn('text-sm', message.includes('成功') || message.includes('已提交') ? 'text-mint-600' : 'text-red-500')}>{message}</p>
+              )}
+            </div>
+            {(!verifyStatus || verifyStatus.status === 'rejected') && (
+              <div className="p-4 border-t border-gray-200 dark:border-dark-600 flex justify-end gap-3">
+                <button onClick={() => { setShowVerify(false); setMessage(''); }} className="px-4 py-2 rounded-full text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-700 transition-all">取消</button>
+                <button onClick={handleSubmitVerify} disabled={verifyLoading} className="flex items-center gap-1.5 px-6 py-2 rounded-full text-sm bg-gradient-to-r from-primary-500 to-primary-600 text-white hover:shadow-lg transition-all disabled:opacity-50">
+                  <ShieldCheck className="w-4 h-4" />
+                  {verifyLoading ? '提交中...' : '提交认证'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

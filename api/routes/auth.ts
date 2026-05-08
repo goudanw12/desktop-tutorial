@@ -101,4 +101,45 @@ router.post('/change-password', authMiddleware, (req: Request, res: Response): v
   res.json({ success: true, data: { message: '密码修改成功' } })
 })
 
+router.post('/verify', authMiddleware, (req: Request, res: Response): void => {
+  const { realName, idNumber, idType } = req.body
+  const userId = req.user!.id
+
+  if (!realName || !idNumber) {
+    res.status(400).json({ success: false, error: '姓名和证件号不能为空' })
+    return
+  }
+
+  const existing = db.prepare('SELECT id, status FROM verifications WHERE user_id = ? ORDER BY submitted_at DESC LIMIT 1').get(userId) as any
+  if (existing && existing.status === 'pending') {
+    res.status(400).json({ success: false, error: '已有认证申请正在审核中' })
+    return
+  }
+  if (existing && existing.status === 'approved') {
+    res.status(400).json({ success: false, error: '已完成实名认证' })
+    return
+  }
+
+  const id = crypto.randomUUID()
+  db.prepare(`
+    INSERT INTO verifications (id, user_id, real_name, id_number, id_type, status)
+    VALUES (?, ?, ?, ?, ?, 'pending')
+  `).run(id, userId, realName, idNumber, idType || 'id_card')
+
+  res.status(201).json({ success: true, data: { message: '认证申请已提交', id } })
+})
+
+router.get('/verify', authMiddleware, (req: Request, res: Response): void => {
+  const userId = req.user!.id
+
+  const verification = db.prepare('SELECT id, real_name, id_type, status, reason, submitted_at, reviewed_at FROM verifications WHERE user_id = ? ORDER BY submitted_at DESC LIMIT 1').get(userId)
+
+  if (!verification) {
+    res.json({ success: true, data: null })
+    return
+  }
+
+  res.json({ success: true, data: verification })
+})
+
 export default router
