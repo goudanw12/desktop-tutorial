@@ -1,0 +1,37 @@
+{
+  "name": "Social - 社交平台",
+  "short_name": "Social",
+  "description": "一个功能完整的社交平台，支持动态发布、聊天、关注等功能",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1A1A2E",
+  "theme_color": "#1A1A2E",
+  "orientation": "portrait",
+  "scope": "/",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["social", "lifestyle"],
+  "shortcuts": [
+    {
+      "name": "发布动态",
+      "short_name": "发布",
+      "description": "快速发布新动态",
+      "url": "/publish",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "消息中心",
+      "short_name": "消息",
+      "description": "查看消息和通知",
+      "url": "/messages",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    }
+  ]
+}

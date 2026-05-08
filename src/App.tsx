@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import Layout from '@/components/Layout';
+import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import Home from '@/pages/Home';
@@ -69,6 +70,7 @@ export default function App() {
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          <PWAInstallPrompt />
         </AppInit>
       </Router>
     </ErrorBoundary>

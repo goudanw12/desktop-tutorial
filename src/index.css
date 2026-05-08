@@ -27,12 +27,30 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* 防止iOS橡皮筋效果 */
+    overscroll-behavior-y: none;
+    /* 适配刘海屏 */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
   body {
     background-color: var(--color-bg);
     color: var(--color-text);
     transition: background-color 0.3s ease, color 0.3s ease;
+    /* 防止iOS双击缩放 */
+    touch-action: manipulation;
+    /* 防止选中文字 */
+    -webkit-user-select: none;
+    user-select: none;
+    /* 防止iOS点击高亮 */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 允许输入框选中 */
+  input, textarea {
+    -webkit-user-select: auto;
+    user-select: auto;
   }
 }
 
