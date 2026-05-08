@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Search, MessageSquarePlus, X, User, Trash2, EyeOff, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { get, post as apiPost, del } from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
 import { dispatchRefreshUnread } from '@/lib/events';
@@ -33,6 +33,7 @@ function formatTime(dateStr: string) {
 
 export default function Messages() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user: currentUser } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [chats, setChats] = useState<ChatItem[]>([]);
@@ -41,6 +42,9 @@ export default function Messages() {
   const [searchUsers, setSearchUsers] = useState<UserProfile[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [menuChatId, setMenuChatId] = useState<string | null>(null);
+
+  const locationState = location.state as { startChatWith?: string } | null;
+  const startChatWith = locationState?.startChatWith;
 
   const fetchChats = async () => {
     try {
@@ -75,6 +79,14 @@ export default function Messages() {
     return () => window.removeEventListener('focus', handleFocus);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (startChatWith) {
+      handleStartChat(startChatWith);
+      window.history.replaceState({}, document.title);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startChatWith]);
 
   const handleSearchUsers = async (query: string) => {
     if (!query.trim()) {

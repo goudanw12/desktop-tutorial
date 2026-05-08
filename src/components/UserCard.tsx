@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserPlus, UserCheck } from 'lucide-react';
+import { UserPlus, UserCheck, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
@@ -59,6 +59,11 @@ export default function UserCard({ user, initialFollowing, onFollowChange }: Use
     setIsLoading(false);
   };
 
+  const handleStartChat = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate(`/messages`, { state: { startChatWith: user.id } });
+  };
+
   return (
     <div
       onClick={() => navigate(`/profile/${user.id}`)}
@@ -81,28 +86,37 @@ export default function UserCard({ user, initialFollowing, onFollowChange }: Use
         )}
       </div>
       {!isSelf && currentUser && (
-        <button
-          onClick={handleFollow}
-          disabled={isLoading}
-          className={cn(
-            'flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all',
-            isFollowing
-              ? 'border border-gray-300 dark:border-dark-500 text-gray-600 dark:text-gray-400 hover:text-red-500 hover:border-red-300'
-              : 'bg-primary-500 text-white hover:bg-primary-600'
-          )}
-        >
-          {isFollowing ? (
-            <>
-              <UserCheck className="w-3 h-3" />
-              已关注
-            </>
-          ) : (
-            <>
-              <UserPlus className="w-3 h-3" />
-              关注
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handleStartChat}
+            className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-dark-700 transition-colors text-gray-500 hover:text-primary-500"
+            title="发私信"
+          >
+            <Mail className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleFollow}
+            disabled={isLoading}
+            className={cn(
+              'flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all',
+              isFollowing
+                ? 'border border-gray-300 dark:border-dark-500 text-gray-600 dark:text-gray-400 hover:text-red-500 hover:border-red-300'
+                : 'bg-primary-500 text-white hover:bg-primary-600'
+            )}
+          >
+            {isFollowing ? (
+              <>
+                <UserCheck className="w-3 h-3" />
+                已关注
+              </>
+            ) : (
+              <>
+                <UserPlus className="w-3 h-3" />
+                关注
+              </>
+            )}
+          </button>
+        </div>
       )}
     </div>
   );

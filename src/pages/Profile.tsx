@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Settings, Edit3, Image as ImageIcon, Grid3X3, ArrowLeft, UserPlus, UserCheck, X, Save, Camera, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Settings, Edit3, Image as ImageIcon, Grid3X3, ArrowLeft, UserPlus, UserCheck, X, Save, Camera, ChevronLeft, ChevronRight, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
@@ -325,28 +325,37 @@ export default function Profile() {
                     编辑资料
                   </button>
                 ) : (
-                  <button
-                    onClick={handleFollow}
-                    disabled={followLoading}
-                    className={cn(
-                      'flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-all',
-                      isFollowing
-                        ? 'border border-gray-300 dark:border-dark-500 text-gray-700 dark:text-gray-300 hover:bg-red-50 hover:text-red-500 hover:border-red-300 dark:hover:bg-red-900/20 dark:hover:text-red-400 dark:hover:border-red-800'
-                        : 'bg-primary-500 text-white hover:bg-primary-600'
-                    )}
-                  >
-                    {isFollowing ? (
-                      <>
-                        <UserCheck className="w-3.5 h-3.5" />
-                        已关注
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus className="w-3.5 h-3.5" />
-                        关注
-                      </>
-                    )}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => navigate(`/messages`, { state: { startChatWith: targetUserId } })}
+                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-gray-300 dark:border-dark-500 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-dark-700 transition-all"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      私信
+                    </button>
+                    <button
+                      onClick={handleFollow}
+                      disabled={followLoading}
+                      className={cn(
+                        'flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-all',
+                        isFollowing
+                          ? 'border border-gray-300 dark:border-dark-500 text-gray-700 dark:text-gray-300 hover:bg-red-50 hover:text-red-500 hover:border-red-300 dark:hover:bg-red-900/20 dark:hover:text-red-400 dark:hover:border-red-800'
+                          : 'bg-primary-500 text-white hover:bg-primary-600'
+                      )}
+                    >
+                      {isFollowing ? (
+                        <>
+                          <UserCheck className="w-3.5 h-3.5" />
+                          已关注
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus className="w-3.5 h-3.5" />
+                          关注
+                        </>
+                      )}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Heart, MessageCircle, Share2, Bookmark, X, Send, ChevronLeft, ChevronRight, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Bookmark, X, Send, ChevronLeft, ChevronRight, MoreHorizontal, Trash2, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { post as apiPost, get, del } from '@/lib/api';
@@ -177,6 +177,11 @@ export default function PostCard({ post, onLike, onBookmark, onUpdate, onDelete 
     setShowMenu(false);
   };
 
+  const handleStartChat = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigate(`/messages`, { state: { startChatWith: post.userId } });
+  };
+
   const imageGridClass = (count: number) => {
     if (count === 1) return 'grid-cols-1';
     if (count === 2) return 'grid-cols-2';
@@ -228,31 +233,42 @@ export default function PostCard({ post, onLike, onBookmark, onUpdate, onDelete 
             </div>
           </div>
 
-          {post.isOwner && (
-            <div className="relative">
+          <div className="flex items-center gap-1">
+            {!post.isOwner && (
               <button
-                onClick={() => setShowMenu(!showMenu)}
-                className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-dark-700 transition-colors"
+                onClick={handleStartChat}
+                className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-dark-700 transition-colors text-gray-500 hover:text-primary-500"
+                title="发私信"
               >
-                <MoreHorizontal className="w-5 h-5 text-gray-500" />
+                <Mail className="w-5 h-5" />
               </button>
-              {showMenu && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-                  <div className="absolute right-0 top-8 bg-white dark:bg-dark-700 rounded-xl shadow-lg border border-gray-100 dark:border-dark-600 py-1 z-20 min-w-[140px] animate-slideUp">
-                    <button
-                      onClick={handleDelete}
-                      disabled={isDeleting}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      {isDeleting ? '删除中...' : '删除动态'}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+            )}
+            {post.isOwner && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-dark-700 transition-colors"
+                >
+                  <MoreHorizontal className="w-5 h-5 text-gray-500" />
+                </button>
+                {showMenu && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+                    <div className="absolute right-0 top-8 bg-white dark:bg-dark-700 rounded-xl shadow-lg border border-gray-100 dark:border-dark-600 py-1 z-20 min-w-[140px] animate-slideUp">
+                      <button
+                        onClick={handleDelete}
+                        disabled={isDeleting}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        {isDeleting ? '删除中...' : '删除动态'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div onDoubleClick={handleDoubleClick} className="relative select-none">
