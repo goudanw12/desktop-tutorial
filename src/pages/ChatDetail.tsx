@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { ArrowLeft, Image, Smile, Send } from 'lucide-react';
+import { ArrowLeft, Image, Smile, Send, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { get, post as apiPost, del } from '@/lib/api';
@@ -20,6 +20,7 @@ export default function ChatDetail() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,7 +34,11 @@ export default function ChatDetail() {
     }
 
     const fetchMessages = async () => {
-      if (!id) return;
+      if (!id) {
+        setError('聊天不存在');
+        setIsLoading(false);
+        return;
+      }
       try {
         const res = await get<{ success: boolean; data: { messages: any[] } }>(`/chats/${id}/messages`);
         const mapped = (res.data?.messages || []).map((m: any) => ({
@@ -58,7 +63,13 @@ export default function ChatDetail() {
           createdAt: m.created_at,
         }));
         setMessages(mapped);
-      } catch {}
+      } catch (err: any) {
+        if (err.message?.includes('403') || err.message?.includes('不是该聊天的成员')) {
+          setError('你不是该聊天的成员');
+        } else {
+          setError('加载消息失败');
+        }
+      }
       setIsLoading(false);
     };
     fetchMessages();
@@ -112,12 +123,16 @@ export default function ChatDetail() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen max-w-2xl mx-auto">
+    <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen max-w-2xl mx-auto bg-gray-50 dark:bg-dark-900">
       <div className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-dark-800 border-b border-gray-200 dark:border-dark-600">
         <button onClick={() => navigate(-1)} className="p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <img src={chatAvatar} alt="" className="w-9 h-9 rounded-full object-cover" />
+        {chatAvatar ? (
+          <img src={chatAvatar} alt="" className="w-9 h-9 rounded-full object-cover" />
+        ) : (
+          <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-dark-600" />
+        )}
         <div className="flex-1">
           <p className="text-sm font-medium text-gray-900 dark:text-white">{chatName || '聊天'}</p>
           <p className="text-xs text-mint-500">在线</p>
@@ -128,6 +143,17 @@ export default function ChatDetail() {
         {isLoading ? (
           <div className="flex justify-center py-8">
             <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <AlertCircle className="w-12 h-12 text-gray-300 mb-4" />
+            <p className="text-gray-500 dark:text-gray-400 mb-4">{error}</p>
+            <button
+              onClick={() => navigate('/messages')}
+              className="px-4 py-2 bg-primary-500 text-white rounded-lg text-sm hover:bg-primary-600 transition-colors"
+            >
+              返回消息列表
+            </button>
           </div>
         ) : messages.length === 0 ? (
           <div className="text-center py-8 text-gray-400 text-sm">暂无消息，发送第一条吧～</div>
@@ -145,36 +171,38 @@ export default function ChatDetail() {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-3 bg-white dark:bg-dark-800 border-t border-gray-200 dark:border-dark-600">
-        <div className="flex items-end gap-2">
-          <button className="p-2.5 text-gray-500 hover:text-primary-500 transition-colors flex-shrink-0">
-            <Image className="w-5 h-5" />
-          </button>
-          <button className="p-2.5 text-gray-500 hover:text-warm-600 transition-colors flex-shrink-0">
-            <Smile className="w-5 h-5" />
-          </button>
-          <textarea
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="输入消息..."
-            rows={1}
-            className="flex-1 resize-none bg-gray-100 dark:bg-dark-700 rounded-xl px-4 py-2.5 text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all"
-          />
-          <button
-            onClick={handleSend}
-            disabled={!inputValue.trim()}
-            className={cn(
-              'p-2.5 rounded-xl transition-all duration-200 flex-shrink-0',
-              inputValue.trim()
-                ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-sm hover:shadow-md'
-                : 'bg-gray-100 dark:bg-dark-700 text-gray-400'
-            )}
-          >
-            <Send className="w-5 h-5" />
-          </button>
+      {!error && (
+        <div className="p-3 bg-white dark:bg-dark-800 border-t border-gray-200 dark:border-dark-600">
+          <div className="flex items-end gap-2">
+            <button className="p-2.5 text-gray-500 hover:text-primary-500 transition-colors flex-shrink-0">
+              <Image className="w-5 h-5" />
+            </button>
+            <button className="p-2.5 text-gray-500 hover:text-warm-600 transition-colors flex-shrink-0">
+              <Smile className="w-5 h-5" />
+            </button>
+            <textarea
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="输入消息..."
+              rows={1}
+              className="flex-1 resize-none bg-gray-100 dark:bg-dark-700 rounded-xl px-4 py-2.5 text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/50 transition-all"
+            />
+            <button
+              onClick={handleSend}
+              disabled={!inputValue.trim()}
+              className={cn(
+                'p-2.5 rounded-xl transition-all duration-200 flex-shrink-0',
+                inputValue.trim()
+                  ? 'bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-sm hover:shadow-md'
+                  : 'bg-gray-100 dark:bg-dark-700 text-gray-400'
+              )}
+            >
+              <Send className="w-5 h-5" />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
