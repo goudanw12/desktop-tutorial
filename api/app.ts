@@ -5,6 +5,7 @@ import express, {
 } from 'express'
 import cors from 'cors'
 import path from 'path'
+import fs from 'fs'
 import dotenv from 'dotenv'
 import { fileURLToPath } from 'url'
 import './database.js'
@@ -116,7 +117,11 @@ app.use((req: Request, res: Response, next: NextFunction): void => {
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')))
+const uploadsDir = process.env.UPLOADS_DIR || path.join(__dirname, '..', 'uploads')
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true })
+}
+app.use('/uploads', express.static(uploadsDir))
 
 app.use('/api/auth', authRoutes)
 app.use('/api/users', userRoutes)

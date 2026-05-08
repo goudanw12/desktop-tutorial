@@ -8,12 +8,15 @@ import crypto from 'crypto'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-const dataDir = path.resolve(process.cwd(), 'api', 'data')
+const dataDir = process.env.DATABASE_PATH 
+  ? path.dirname(process.env.DATABASE_PATH)
+  : path.resolve(process.cwd(), 'api', 'data')
+  
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true })
 }
 
-const dbPath = path.join(dataDir, 'social.db')
+const dbPath = process.env.DATABASE_PATH || path.join(dataDir, 'social.db')
 const db = new Database(dbPath)
 
 db.pragma('journal_mode = WAL')
