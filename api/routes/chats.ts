@@ -242,4 +242,26 @@ router.delete('/:chatId/hide', authMiddleware, (req: Request, res: Response): vo
   res.json({ success: true, data: { message: '取消隐藏成功' } })
 })
 
+router.delete('/:chatId', authMiddleware, (req: Request, res: Response): void => {
+  const { chatId } = req.params
+  const userId = req.user!.id
+
+  const isMember = db.prepare('SELECT id FROM chat_members WHERE chat_id = ? AND user_id = ?').get(chatId, userId)
+  if (!isMember) {
+    res.status(403).json({ success: false, error: '不是该聊天的成员' })
+    return
+  }
+
+  db.prepare('DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?').run(chatId, userId)
+
+  const remainingMembers = db.prepare('SELECT COUNT(*) as count FROM chat_members WHERE chat_id = ?').get(chatId) as { count: number }
+  if (remainingMembers.count === 0) {
+    db.prepare('DELETE FROM messages WHERE chat_id = ?').run(chatId)
+    db.prepare('DELETE FROM chat_hide WHERE chat_id = ?').run(chatId)
+    db.prepare('DELETE FROM chats WHERE id = ?').run(chatId)
+  }
+
+  res.json({ success: true, data: { message: '删除成功' } })
+})
+
 export default router
