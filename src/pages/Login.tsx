@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Phone, Lock, Eye, EyeOff } from 'lucide-react';
+import { User, Lock, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 
 export default function Login() {
   const navigate = useNavigate();
   const { login, isLoading } = useAuthStore();
-  const [phone, setPhone] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -15,19 +15,15 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!phone || !password) {
+    if (!username || !password) {
       setError('请填写所有字段');
       return;
     }
-    if (!/^1\d{10}$/.test(phone)) {
-      setError('请输入正确的手机号');
-      return;
-    }
     try {
-      await login(phone, password);
+      await login(username, password);
       navigate('/');
     } catch (err: any) {
-      setError(err.message || '手机号或密码错误');
+      setError(err.message || '用户名或密码错误');
     }
   };
 
@@ -56,13 +52,12 @@ export default function Login() {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="relative">
-              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
               <input
-                type="tel"
-                placeholder="手机号"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                maxLength={11}
+                type="text"
+                placeholder="用户名"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all"
               />
             </div>

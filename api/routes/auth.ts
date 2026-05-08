@@ -7,13 +7,66 @@ import { authMiddleware, JWT_SECRET } from '../middleware/auth.js'
 
 const router = Router()
 
+const loginAttempts = new Map<string, { count: number; lastAttempt: number }>()
+const registerAttempts = new Map<string, { count: number; lastAttempt: number }>()
+const BLOCK_DURATION = 15 * 60 * 1000
+const MAX_LOGIN_ATTEMPTS = 5
+const MAX_REGISTER_ATTEMPTS = 3
+
+function isBlocked(map: Map<string, { count: number; lastAttempt: number }>, key: string, maxAttempts: number): boolean {
+  const record = map.get(key)
+  if (!record) return false
+  if (Date.now() - record.lastAttempt > BLOCK_DURATION) {
+    map.delete(key)
+    return false
+  }
+  return record.count >= maxAttempts
+}
+
+function recordAttempt(map: Map<string, { count: number; lastAttempt: number }>, key: string): void {
+  const record = map.get(key)
+  if (record && Date.now() - record.lastAttempt > BLOCK_DURATION) {
+    map.set(key, { count: 1, lastAttempt: Date.now() })
+  } else if (record) {
+    record.count++
+    record.lastAttempt = Date.now()
+  } else {
+    map.set(key, { count: 1, lastAttempt: Date.now() })
+  }
+}
+
+function clearAttempts(map: Map<string, { count: number; lastAttempt: number }>, key: string): void {
+  map.delete(key)
+}
+
+function sanitizeInput(input: string): string {
+  return input.replace(/[<>'"&\\]/g, '').trim().slice(0, 100)
+}
+
 function generateToken(user: any) {
-  return jwt.sign({ id: user.id, username: user.username, email: user.email }, JWT_SECRET, { expiresIn: '7d' })
+  return jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' })
 }
 
 function sanitizeUser(user: any) {
-  const { password_hash, ...rest } = user
+  const { password_hash, email, phone, ...rest } = user
   return rest
+}
+
+function generateUniqueUsername(): string {
+  const prefixes = ['星', '月', '风', '云', '雪', '花', '海', '山', '光', '影', '梦', '灵', '辰', '夜', '晨']
+  const suffixes = ['旅人', '行者', '探索者', '守望者', '追梦人', '漫步者', '冒险家', '观察者', '创造者', '思考者']
+  let username = ''
+  let attempts = 0
+  while (attempts < 20) {
+    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)]
+    const suffix = suffixes[Math.floor(Math.random() * suffixes.length)]
+    const num = Math.floor(Math.random() * 9000) + 1000
+    username = `${prefix}${suffix}${num}`
+    const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username)
+    if (!existing) return username
+    attempts++
+  }
+  return `用户${Date.now().toString(36)}`
 }
 
 router.get('/check-username', (req: Request, res: Response): void => {
@@ -22,78 +75,113 @@ router.get('/check-username', (req: Request, res: Response): void => {
     res.json({ success: true, data: { available: false } })
     return
   }
-  const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username)
-  res.json({ success: true, data: { available: !existing } })
-})
-
-router.get('/check-phone', (req: Request, res: Response): void => {
-  const { phone } = req.query
-  if (!phone || typeof phone !== 'string') {
+  const clean = sanitizeInput(username)
+  if (clean.length < 2 || clean.length > 20) {
     res.json({ success: true, data: { available: false } })
     return
   }
-  const existing = db.prepare('SELECT id FROM users WHERE phone = ?').get(phone)
+  const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(clean)
   res.json({ success: true, data: { available: !existing } })
 })
 
 router.post('/register', (req: Request, res: Response): void => {
-  const { username, phone, password } = req.body
+  const clientIp = req.ip || req.socket.remoteAddress || 'unknown'
 
-  if (!username || !phone || !password) {
-    res.status(400).json({ success: false, error: '用户名、手机号和密码不能为空' })
+  if (isBlocked(registerAttempts, clientIp, MAX_REGISTER_ATTEMPTS)) {
+    res.status(429).json({ success: false, error: '注册请求过于频繁，请15分钟后再试' })
     return
   }
 
-  if (!/^1\d{10}$/.test(phone)) {
-    res.status(400).json({ success: false, error: '请输入正确的手机号' })
+  const { username, password } = req.body
+
+  if (!password) {
+    res.status(400).json({ success: false, error: '密码不能为空' })
     return
   }
 
-  const existingUser = db.prepare('SELECT id FROM users WHERE phone = ? OR username = ?').get(phone, username)
+  if (typeof password !== 'string' || password.length < 6) {
+    res.status(400).json({ success: false, error: '密码不能少于6位' })
+    return
+  }
+
+  if (password.length > 128) {
+    res.status(400).json({ success: false, error: '密码过长' })
+    return
+  }
+
+  const finalUsername = username ? sanitizeInput(String(username)) : generateUniqueUsername()
+
+  if (finalUsername.length < 2 || finalUsername.length > 20) {
+    res.status(400).json({ success: false, error: '用户名需要2-20个字符' })
+    return
+  }
+
+  if (!/^[a-zA-Z0-9\u4e00-\u9fa5_]+$/.test(finalUsername)) {
+    res.status(400).json({ success: false, error: '用户名只能包含中文、字母、数字和下划线' })
+    return
+  }
+
+  const existingUser = db.prepare('SELECT id FROM users WHERE username = ?').get(finalUsername)
   if (existingUser) {
-    const existing = db.prepare('SELECT id FROM users WHERE phone = ?').get(phone) as any
-    if (existing) {
-      res.status(409).json({ success: false, error: '手机号已注册' })
-    } else {
-      res.status(409).json({ success: false, error: '用户名已存在' })
-    }
+    recordAttempt(registerAttempts, clientIp)
+    res.status(409).json({ success: false, error: '用户名已存在，请换一个' })
     return
   }
 
   const id = crypto.randomUUID()
-  const passwordHash = bcrypt.hashSync(password, 10)
-  const email = `${phone}@phone.social`
+  const passwordHash = bcrypt.hashSync(password, 12)
+  const email = `${id}@auto.social`
 
   db.prepare(`
-    INSERT INTO users (id, username, email, password_hash, phone)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(id, username, email, passwordHash, phone)
+    INSERT INTO users (id, username, email, password_hash)
+    VALUES (?, ?, ?, ?)
+  `).run(id, finalUsername, email, passwordHash)
 
-  const token = generateToken({ id, username, email })
+  const token = generateToken({ id, username: finalUsername })
   const user = db.prepare('SELECT id, username, email, phone, avatar, bio, is_verified, is_private, theme, created_at FROM users WHERE id = ?').get(id)
+
+  clearAttempts(registerAttempts, clientIp)
 
   res.status(201).json({ success: true, data: { token, user } })
 })
 
 router.post('/login', (req: Request, res: Response): void => {
-  const { phone, password } = req.body
+  const clientIp = req.ip || req.socket.remoteAddress || 'unknown'
 
-  if (!phone || !password) {
-    res.status(400).json({ success: false, error: '手机号和密码不能为空' })
+  if (isBlocked(loginAttempts, clientIp, MAX_LOGIN_ATTEMPTS)) {
+    res.status(429).json({ success: false, error: '登录失败次数过多，请15分钟后再试' })
     return
   }
 
-  const user = db.prepare('SELECT * FROM users WHERE phone = ?').get(phone) as any
+  const { username, password } = req.body
+
+  if (!username || !password) {
+    res.status(400).json({ success: false, error: '用户名和密码不能为空' })
+    return
+  }
+
+  if (typeof password !== 'string' || password.length < 6) {
+    res.status(400).json({ success: false, error: '用户名或密码错误' })
+    return
+  }
+
+  const cleanUsername = sanitizeInput(String(username))
+
+  const user = db.prepare('SELECT * FROM users WHERE username = ?').get(cleanUsername) as any
   if (!user) {
-    res.status(401).json({ success: false, error: '手机号或密码错误' })
+    recordAttempt(loginAttempts, clientIp)
+    res.status(401).json({ success: false, error: '用户名或密码错误' })
     return
   }
 
   const isValid = bcrypt.compareSync(password, user.password_hash)
   if (!isValid) {
-    res.status(401).json({ success: false, error: '手机号或密码错误' })
+    recordAttempt(loginAttempts, clientIp)
+    res.status(401).json({ success: false, error: '用户名或密码错误' })
     return
   }
+
+  clearAttempts(loginAttempts, clientIp)
 
   const token = generateToken(user)
   res.json({ success: true, data: { token, user: sanitizeUser(user) } })
@@ -111,9 +199,9 @@ router.post('/oauth/qq', (req: Request, res: Response): void => {
 
   if (!user) {
     const id = crypto.randomUUID()
-    const username = nickname || `QQ用户${qqOpenId.slice(-4)}`
+    const username = nickname ? sanitizeInput(String(nickname)) : `QQ用户${qqOpenId.slice(-4)}`
     const email = `qq_${qqOpenId}@qq.social`
-    const passwordHash = bcrypt.hashSync(crypto.randomUUID(), 10)
+    const passwordHash = bcrypt.hashSync(crypto.randomUUID(), 12)
     const userAvatar = avatar || `https://picsum.photos/seed/qq${qqOpenId}/200/200`
 
     db.prepare(`
@@ -148,6 +236,11 @@ router.post('/change-password', authMiddleware, (req: Request, res: Response): v
     return
   }
 
+  if (typeof newPassword !== 'string' || newPassword.length < 6) {
+    res.status(400).json({ success: false, error: '新密码不能少于6位' })
+    return
+  }
+
   const user = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(userId) as any
   if (!user) {
     res.status(404).json({ success: false, error: '用户不存在' })
@@ -160,7 +253,7 @@ router.post('/change-password', authMiddleware, (req: Request, res: Response): v
     return
   }
 
-  const newPasswordHash = bcrypt.hashSync(newPassword, 10)
+  const newPasswordHash = bcrypt.hashSync(newPassword, 12)
   db.prepare("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?").run(newPasswordHash, userId)
 
   res.json({ success: true, data: { message: '密码修改成功' } })

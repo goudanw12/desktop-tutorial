@@ -7,11 +7,10 @@ interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (phone: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   loginWithQQ: (qqOpenId: string, nickname: string, avatar?: string) => Promise<void>;
-  register: (username: string, phone: string, password: string) => Promise<void>;
+  register: (username: string | undefined, password: string) => Promise<void>;
   checkUsername: (username: string) => Promise<boolean>;
-  checkPhone: (phone: string) => Promise<boolean>;
   logout: () => void;
   fetchMe: () => Promise<void>;
 }
@@ -42,10 +41,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: !!localStorage.getItem('token'),
   isLoading: false,
 
-  login: async (phone: string, password: string) => {
+  login: async (username: string, password: string) => {
     set({ isLoading: true });
     try {
-      const res = await post<{ success: boolean; data: { token: string; user: any } }>('/auth/login', { phone, password });
+      const res = await post<{ success: boolean; data: { token: string; user: any } }>('/auth/login', { username, password });
       const { user, token } = handleAuthResponse(res.data);
       set({ user, token, isAuthenticated: true, isLoading: false });
     } catch (err: any) {
@@ -66,10 +65,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  register: async (username: string, phone: string, password: string) => {
+  register: async (username: string | undefined, password: string) => {
     set({ isLoading: true });
     try {
-      const res = await post<{ success: boolean; data: { token: string; user: any } }>('/auth/register', { username, phone, password });
+      const body: any = { password };
+      if (username) body.username = username;
+      const res = await post<{ success: boolean; data: { token: string; user: any } }>('/auth/register', body);
       const { user, token } = handleAuthResponse(res.data);
       set({ user, token, isAuthenticated: true, isLoading: false });
     } catch (err: any) {
@@ -81,15 +82,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   checkUsername: async (username: string): Promise<boolean> => {
     try {
       const res = await get<{ success: boolean; data: { available: boolean } }>(`/auth/check-username?username=${encodeURIComponent(username)}`);
-      return res.data.available;
-    } catch {
-      return false;
-    }
-  },
-
-  checkPhone: async (phone: string): Promise<boolean> => {
-    try {
-      const res = await get<{ success: boolean; data: { available: boolean } }>(`/auth/check-phone?phone=${encodeURIComponent(phone)}`);
       return res.data.available;
     } catch {
       return false;

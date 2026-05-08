@@ -1,21 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { User, Phone, Lock, Eye, EyeOff, CheckCircle, XCircle } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, CheckCircle, XCircle, Shuffle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 
 export default function Register() {
   const navigate = useNavigate();
-  const { register, isLoading, checkUsername, checkPhone } = useAuthStore();
+  const { register, isLoading, checkUsername } = useAuthStore();
   const [username, setUsername] = useState('');
-  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
-  const [phoneStatus, setPhoneStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
 
   const checkUsernameAvailability = useCallback(async (value: string) => {
     if (value.length < 2) {
@@ -27,59 +25,47 @@ export default function Register() {
     setUsernameStatus(available ? 'available' : 'taken');
   }, [checkUsername]);
 
-  const checkPhoneAvailability = useCallback(async (value: string) => {
-    if (!/^1\d{10}$/.test(value)) {
-      setPhoneStatus('idle');
+  useEffect(() => {
+    if (!username) {
+      setUsernameStatus('idle');
       return;
     }
-    setPhoneStatus('checking');
-    const available = await checkPhone(value);
-    setPhoneStatus(available ? 'available' : 'taken');
-  }, [checkPhone]);
-
-  useEffect(() => {
     const timer = setTimeout(() => {
       checkUsernameAvailability(username);
     }, 500);
     return () => clearTimeout(timer);
   }, [username, checkUsernameAvailability]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      checkPhoneAvailability(phone);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [phone, checkPhoneAvailability]);
+  const handleRandomUsername = () => {
+    const prefixes = ['星', '月', '风', '云', '雪', '花', '海', '山', '光', '影', '梦', '灵', '辰', '夜', '晨'];
+    const suffixes = ['旅人', '行者', '探索者', '守望者', '追梦人', '漫步者', '冒险家', '观察者', '创造者', '思考者'];
+    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+    const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
+    const num = Math.floor(Math.random() * 9000) + 1000;
+    setUsername(`${prefix}${suffix}${num}`);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!username || !phone || !password || !confirmPassword) {
-      setError('请填写所有字段');
+    if (!password || !confirmPassword) {
+      setError('请填写密码');
       return;
     }
-    if (usernameStatus === 'taken') {
-      setError('用户名已被占用');
-      return;
-    }
-    if (!/^1\d{10}$/.test(phone)) {
-      setError('请输入正确的手机号');
-      return;
-    }
-    if (phoneStatus === 'taken') {
-      setError('手机号已注册');
+    if (password.length < 6) {
+      setError('密码不能少于6位');
       return;
     }
     if (password !== confirmPassword) {
       setError('两次密码不一致');
       return;
     }
-    if (password.length < 6) {
-      setError('密码至少6位');
+    if (username && usernameStatus === 'taken') {
+      setError('用户名已被占用');
       return;
     }
     try {
-      await register(username, phone, password);
+      await register(username || undefined, password);
       navigate('/');
     } catch (err: any) {
       setError(err.message || '注册失败，请重试');
@@ -109,62 +95,49 @@ export default function Register() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="relative">
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="用户名（不可重复）"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className={cn(
-                  'w-full pl-11 pr-10 py-3 bg-white/10 border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-all',
-                  usernameStatus === 'available' ? 'border-mint-500/50 focus:ring-mint-500/50' :
-                  usernameStatus === 'taken' ? 'border-red-500/50 focus:ring-red-500/50' :
-                  'border-white/10 focus:ring-mint-500/50'
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-sm text-gray-400">用户名（选填，不填则随机生成）</label>
+                <button
+                  type="button"
+                  onClick={handleRandomUsername}
+                  className="flex items-center gap-1 text-xs text-mint-400 hover:text-mint-300 transition-colors"
+                >
+                  <Shuffle className="w-3 h-3" />
+                  随机生成
+                </button>
+              </div>
+              <div className="relative">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="给自己取个名字吧"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className={cn(
+                    'w-full pl-11 pr-10 py-3 bg-white/10 border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-all',
+                    usernameStatus === 'available' ? 'border-mint-500/50 focus:ring-mint-500/50' :
+                    usernameStatus === 'taken' ? 'border-red-500/50 focus:ring-red-500/50' :
+                    'border-white/10 focus:ring-mint-500/50'
+                  )}
+                />
+                {usernameStatus === 'checking' && (
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs">检查中...</span>
                 )}
-              />
-              {usernameStatus === 'checking' && (
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs">检查中...</span>
-              )}
-              {usernameStatus === 'available' && (
-                <CheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-mint-400" />
-              )}
-              {usernameStatus === 'taken' && (
-                <XCircle className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-red-400" />
-              )}
-            </div>
-
-            <div className="relative">
-              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
-              <input
-                type="tel"
-                placeholder="手机号"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                maxLength={11}
-                className={cn(
-                  'w-full pl-11 pr-10 py-3 bg-white/10 border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-all',
-                  phoneStatus === 'available' ? 'border-mint-500/50 focus:ring-mint-500/50' :
-                  phoneStatus === 'taken' ? 'border-red-500/50 focus:ring-red-500/50' :
-                  'border-white/10 focus:ring-mint-500/50'
+                {usernameStatus === 'available' && (
+                  <CheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-mint-400" />
                 )}
-              />
-              {phoneStatus === 'checking' && (
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs">检查中...</span>
-              )}
-              {phoneStatus === 'available' && (
-                <CheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-mint-400" />
-              )}
-              {phoneStatus === 'taken' && (
-                <XCircle className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-red-400" />
-              )}
+                {usernameStatus === 'taken' && (
+                  <XCircle className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-red-400" />
+                )}
+              </div>
             </div>
 
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
               <input
                 type={showPassword ? 'text' : 'password'}
-                placeholder="密码"
+                placeholder="密码（至少6位）"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-11 pr-11 py-3 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-mint-500/50 focus:border-mint-500/50 transition-all"
@@ -189,9 +162,13 @@ export default function Register() {
               />
             </div>
 
+            {password && password.length < 6 && (
+              <p className="text-xs text-red-400">密码不能少于6位</p>
+            )}
+
             <button
               type="submit"
-              disabled={isLoading || usernameStatus === 'taken' || phoneStatus === 'taken'}
+              disabled={isLoading || usernameStatus === 'taken'}
               className={cn(
                 'w-full py-3 rounded-xl font-medium text-white transition-all duration-200',
                 'bg-gradient-to-r from-mint-500 to-mint-600 hover:from-mint-600 hover:to-mint-700',
