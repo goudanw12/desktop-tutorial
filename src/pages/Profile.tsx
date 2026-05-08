@@ -112,19 +112,21 @@ export default function Profile() {
   }, [targetUserId, currentUser, isOwnProfile]);
 
   const handleFollow = async () => {
-    if (!userId || followLoading) return;
+    if (!targetUserId || followLoading || isOwnProfile) return;
     setFollowLoading(true);
     try {
       if (isFollowing) {
-        await del(`/users/${userId}/follow`);
+        await del(`/users/${targetUserId}/follow`);
         setIsFollowing(false);
         setProfileUser((prev) => prev ? { ...prev, followersCount: Math.max(0, prev.followersCount - 1) } : prev);
       } else {
-        await apiPost(`/users/${userId}/follow`);
+        await apiPost(`/users/${targetUserId}/follow`);
         setIsFollowing(true);
         setProfileUser((prev) => prev ? { ...prev, followersCount: prev.followersCount + 1 } : prev);
       }
-    } catch {}
+    } catch (err: any) {
+      console.error('Follow error:', err);
+    }
     setFollowLoading(false);
   };
 

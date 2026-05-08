@@ -61,7 +61,7 @@ export default function Publish() {
         formData.append('images', img.file);
       });
 
-      await post('/posts', formData);
+      const result = await post('/posts', formData);
       images.forEach((img) => URL.revokeObjectURL(img.preview));
       navigate('/');
     } catch (err: any) {

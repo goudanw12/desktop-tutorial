@@ -3,37 +3,59 @@ import { UserPlus, UserCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
-import { post as apiPost, del } from '@/lib/api';
+import { post as apiPost, del, get } from '@/lib/api';
 import type { UserProfile } from '@/types';
 
 interface UserCardProps {
   user: UserProfile;
+  initialFollowing?: boolean;
   onFollowChange?: (userId: string, isFollowing: boolean) => void;
 }
 
-export default function UserCard({ user, onFollowChange }: UserCardProps) {
+export default function UserCard({ user, initialFollowing, onFollowChange }: UserCardProps) {
   const navigate = useNavigate();
   const { user: currentUser } = useAuthStore();
-  const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(initialFollowing ?? false);
   const [isLoading, setIsLoading] = useState(false);
+  const [initialized, setInitialized] = useState(initialFollowing !== undefined);
 
   const isSelf = currentUser?.id === user.id;
 
+  useState(() => {
+    if (initialFollowing !== undefined || !currentUser || isSelf) {
+      setInitialized(true);
+      return;
+    }
+    const checkFollowStatus = async () => {
+      try {
+        const res = await get<{ success: boolean; data: { following: any[] } }>(`/users/${currentUser.id}/following`);
+        const isFollowed = (res.data?.following || []).some((f: any) => f.id === user.id);
+        setIsFollowing(isFollowed);
+      } catch {}
+      setInitialized(true);
+    };
+    checkFollowStatus();
+  });
+
   const handleFollow = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isLoading) return;
+    if (isLoading || !currentUser) return;
     setIsLoading(true);
+
+    const prevFollowing = isFollowing;
+    setIsFollowing(!prevFollowing);
+    onFollowChange?.(user.id, !prevFollowing);
+
     try {
-      if (isFollowing) {
+      if (prevFollowing) {
         await del(`/users/${user.id}/follow`);
-        setIsFollowing(false);
-        onFollowChange?.(user.id, false);
       } else {
         await apiPost(`/users/${user.id}/follow`);
-        setIsFollowing(true);
-        onFollowChange?.(user.id, true);
       }
-    } catch {}
+    } catch {
+      setIsFollowing(prevFollowing);
+      onFollowChange?.(user.id, prevFollowing);
+    }
     setIsLoading(false);
   };
 
@@ -58,7 +80,7 @@ export default function UserCard({ user, onFollowChange }: UserCardProps) {
           <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.bio}</p>
         )}
       </div>
-      {!isSelf && (
+      {!isSelf && currentUser && (
         <button
           onClick={handleFollow}
           disabled={isLoading}
