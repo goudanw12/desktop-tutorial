@@ -129,7 +129,7 @@ export default function Messages() {
   const handleDeleteChat = async (chatId: string) => {
     if (!confirm('确定要删除这个聊天吗？此操作不可撤销。')) return;
     try {
-      await del(`/chats/${chatId}/hide`);
+      await apiPost(`/chats/${chatId}/hide`, {});
       setChats((prev) => prev.filter((c) => c.id !== chatId));
       setMenuChatId(null);
       if (window.location.pathname === `/chat/${chatId}`) {
