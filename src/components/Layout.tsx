@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Compass, PlusCircle, MessageCircle, Bell, Settings, User, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -26,26 +26,26 @@ export default function Layout() {
   const [notificationCount, setNotificationCount] = useState(0);
   const [messageCount, setMessageCount] = useState(0);
 
+  const fetchUnreadCounts = useCallback(async () => {
+    try {
+      const chatsRes = await get<{ success: boolean; data: any[] }>('/chats');
+      const totalUnread = (chatsRes.data || []).reduce(
+        (sum: number, chat: any) => sum + (chat.unread_count || 0),
+        0
+      );
+      setMessageCount(totalUnread);
+      setHasMessageUnread(totalUnread > 0);
+    } catch {}
+
+    try {
+      const notifRes = await get<{ success: boolean; data: any[] }>('/notifications');
+      const unread = (notifRes.data || []).filter((n: any) => !n.is_read).length;
+      setNotificationCount(unread);
+      setHasNotificationUnread(unread > 0);
+    } catch {}
+  }, []);
+
   useEffect(() => {
-    const fetchUnreadCounts = async () => {
-      try {
-        const chatsRes = await get<{ success: boolean; data: any[] }>('/chats');
-        const totalUnread = (chatsRes.data || []).reduce(
-          (sum: number, chat: any) => sum + (chat.unread_count || 0),
-          0
-        );
-        setMessageCount(totalUnread);
-        setHasMessageUnread(totalUnread > 0);
-      } catch {}
-
-      try {
-        const notifRes = await get<{ success: boolean; data: any[] }>('/notifications');
-        const unread = (notifRes.data || []).filter((n: any) => !n.is_read).length;
-        setNotificationCount(unread);
-        setHasNotificationUnread(unread > 0);
-      } catch {}
-    };
-
     fetchUnreadCounts();
     const interval = setInterval(fetchUnreadCounts, 10000);
 
@@ -56,7 +56,7 @@ export default function Layout() {
       clearInterval(interval);
       window.removeEventListener(REFRESH_UNREAD_EVENT, handleRefresh);
     };
-  }, []);
+  }, [fetchUnreadCounts]);
 
   const handleNavClick = (path: string) => {
     navigate(path);
