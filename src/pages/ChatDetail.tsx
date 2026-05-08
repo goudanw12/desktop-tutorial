@@ -67,7 +67,8 @@ export default function ChatDetail() {
         }));
         setMessages(mapped);
       } catch (err: any) {
-        if (err.message?.includes('403') || err.message?.includes('不是该聊天的成员')) {
+        const errorMsg = err.message || '';
+        if (errorMsg.includes('403') || errorMsg.includes('不是该聊天的成员') || errorMsg.includes('Forbidden')) {
           setError('你不是该聊天的成员');
         } else {
           setError('加载消息失败');

@@ -144,9 +144,6 @@ export default function Messages() {
       await del(`/chats/${chatId}`);
       setChats((prev) => prev.filter((c) => c.id !== chatId));
       setMenuChatId(null);
-      if (window.location.pathname === `/chat/${chatId}`) {
-        navigate('/messages');
-      }
     } catch {}
   };
 
