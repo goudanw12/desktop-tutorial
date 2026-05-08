@@ -1,76 +1,33 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, Phone, MessageSquare } from 'lucide-react';
+import { Phone, Lock, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 
-type LoginMode = 'email' | 'phone';
-
 export default function Login() {
   const navigate = useNavigate();
-  const { login, loginWithPhone, sendSmsCode, isLoading } = useAuthStore();
-  const [mode, setMode] = useState<LoginMode>('email');
-  const [email, setEmail] = useState('');
+  const { login, isLoading } = useAuthStore();
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [phone, setPhone] = useState('');
-  const [smsCode, setSmsCode] = useState('');
-  const [smsCountdown, setSmsCountdown] = useState(0);
-  const [lastSentCode, setLastSentCode] = useState('');
   const [error, setError] = useState('');
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!email || !password) {
+    if (!phone || !password) {
       setError('请填写所有字段');
       return;
     }
-    try {
-      await login(email, password);
-      navigate('/');
-    } catch (err: any) {
-      setError(err.message || '邮箱或密码错误');
-    }
-  };
-
-  const handleSendSms = async () => {
-    if (smsCountdown > 0) return;
-    if (!phone || !/^1\d{10}$/.test(phone)) {
+    if (!/^1\d{10}$/.test(phone)) {
       setError('请输入正确的手机号');
       return;
     }
-    setError('');
     try {
-      const code = await sendSmsCode(phone);
-      setLastSentCode(code);
-      setSmsCountdown(60);
-      const timer = setInterval(() => {
-        setSmsCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } catch (err: any) {
-      setError(err.message || '发送验证码失败');
-    }
-  };
-
-  const handlePhoneLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    if (!phone || !smsCode) {
-      setError('请填写手机号和验证码');
-      return;
-    }
-    try {
-      await loginWithPhone(phone, smsCode);
+      await login(phone, password);
       navigate('/');
     } catch (err: any) {
-      setError(err.message || '验证码错误或已过期');
+      setError(err.message || '手机号或密码错误');
     }
   };
 
@@ -89,26 +46,7 @@ export default function Login() {
         </div>
 
         <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-2xl">
-          <div className="flex mb-6 bg-white/5 rounded-xl p-1">
-            <button
-              onClick={() => { setMode('email'); setError(''); }}
-              className={cn(
-                'flex-1 py-2 rounded-lg text-sm font-medium transition-all',
-                mode === 'email' ? 'bg-white/15 text-white' : 'text-gray-400 hover:text-white'
-              )}
-            >
-              邮箱登录
-            </button>
-            <button
-              onClick={() => { setMode('phone'); setError(''); }}
-              className={cn(
-                'flex-1 py-2 rounded-lg text-sm font-medium transition-all',
-                mode === 'phone' ? 'bg-white/15 text-white' : 'text-gray-400 hover:text-white'
-              )}
-            >
-              手机号登录
-            </button>
-          </div>
+          <h2 className="text-xl font-semibold text-white mb-6">登录</h2>
 
           {error && (
             <div className="mb-4 p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-300 text-sm">
@@ -116,104 +54,48 @@ export default function Login() {
             </div>
           )}
 
-          {mode === 'email' ? (
-            <form onSubmit={handleEmailLogin} className="space-y-4">
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
-                <input
-                  type="email"
-                  placeholder="邮箱地址"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all"
-                />
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="密码"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-11 pr-11 py-3 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
-                </button>
-              </div>
-              {lastSentCode && (
-                <div className="p-3 rounded-xl bg-mint-500/20 border border-mint-500/30 text-mint-300 text-sm text-center">
-                  验证码已发送：<span className="font-bold text-lg tracking-widest">{lastSentCode}</span>
-                </div>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="relative">
+              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
+              <input
+                type="tel"
+                placeholder="手机号"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                maxLength={11}
+                className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all"
+              />
+            </div>
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="密码"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full pl-11 pr-11 py-3 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+              >
+                {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
+              </button>
+            </div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className={cn(
+                'w-full py-3 rounded-xl font-medium text-white transition-all duration-200',
+                'bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700',
+                'hover:shadow-lg hover:shadow-primary-500/25',
+                'disabled:opacity-50 disabled:cursor-not-allowed'
               )}
-              <button
-                type="submit"
-                disabled={isLoading}
-                className={cn(
-                  'w-full py-3 rounded-xl font-medium text-white transition-all duration-200',
-                  'bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700',
-                  'hover:shadow-lg hover:shadow-primary-500/25',
-                  'disabled:opacity-50 disabled:cursor-not-allowed'
-                )}
-              >
-                {isLoading ? '登录中...' : '登录'}
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handlePhoneLogin} className="space-y-4">
-              <div className="relative">
-                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
-                <input
-                  type="tel"
-                  placeholder="手机号"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  maxLength={11}
-                  className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all"
-                />
-              </div>
-              <div className="relative">
-                <MessageSquare className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="验证码"
-                  value={smsCode}
-                  onChange={(e) => setSmsCode(e.target.value)}
-                  maxLength={6}
-                  className="w-full pl-11 pr-28 py-3 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50 transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={handleSendSms}
-                  disabled={smsCountdown > 0}
-                  className={cn(
-                    'absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
-                    smsCountdown > 0
-                      ? 'bg-white/5 text-gray-500 cursor-not-allowed'
-                      : 'bg-primary-500/20 text-primary-400 hover:bg-primary-500/30'
-                  )}
-                >
-                  {smsCountdown > 0 ? `${smsCountdown}s` : '获取验证码'}
-                </button>
-              </div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className={cn(
-                  'w-full py-3 rounded-xl font-medium text-white transition-all duration-200',
-                  'bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700',
-                  'hover:shadow-lg hover:shadow-primary-500/25',
-                  'disabled:opacity-50 disabled:cursor-not-allowed'
-                )}
-              >
-                {isLoading ? '登录中...' : '登录'}
-              </button>
-            </form>
-          )}
+            >
+              {isLoading ? '登录中...' : '登录'}
+            </button>
+          </form>
 
           <div className="mt-6 flex items-center gap-3">
             <div className="flex-1 h-px bg-white/10" />
