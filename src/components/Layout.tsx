@@ -26,6 +26,8 @@ export default function Layout() {
     navigate('/login');
   };
 
+  const isProfileActive = location.pathname === '/profile' || location.pathname.startsWith('/profile/');
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-dark-900 font-body">
       <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-dark-800 border-r border-gray-200 dark:border-dark-600 flex-col z-30">
@@ -71,7 +73,7 @@ export default function Layout() {
             onClick={() => navigate('/profile')}
             className={cn(
               'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200',
-              location.pathname === '/profile'
+              isProfileActive
                 ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400'
                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-700'
             )}
@@ -81,7 +83,12 @@ export default function Layout() {
           </button>
           <button
             onClick={() => navigate('/settings')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-700 transition-all duration-200"
+            className={cn(
+              'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200',
+              location.pathname === '/settings'
+                ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-700'
+            )}
           >
             <Settings className="w-5 h-5" />
             <span>设置</span>
@@ -90,13 +97,16 @@ export default function Layout() {
 
         {user && (
           <div className="p-4 border-t border-gray-200 dark:border-dark-600">
-            <div className="flex items-center gap-3">
+            <div
+              className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-700 rounded-xl p-2 -m-2 transition-colors"
+              onClick={() => navigate('/profile')}
+            >
               <img src={user.avatar} alt={user.username} className="w-10 h-10 rounded-full object-cover" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{user.username}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
               </div>
-              <button onClick={handleLogout} className="p-1.5 text-gray-400 hover:text-primary-500 transition-colors">
+              <button onClick={(e) => { e.stopPropagation(); handleLogout(); }} className="p-1.5 text-gray-400 hover:text-primary-500 transition-colors">
                 <LogOut className="w-4 h-4" />
               </button>
             </div>
@@ -138,6 +148,16 @@ export default function Layout() {
             </button>
           );
         })}
+        <button
+          onClick={() => navigate('/profile')}
+          className={cn(
+            'flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all duration-200',
+            isProfileActive ? 'text-primary-500' : 'text-gray-500 dark:text-gray-400'
+          )}
+        >
+          <User className="w-5 h-5" />
+          <span className="text-[10px]">我的</span>
+        </button>
       </nav>
     </div>
   );

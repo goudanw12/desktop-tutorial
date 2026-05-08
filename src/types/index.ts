@@ -8,10 +8,12 @@ export interface UserProfile {
   followersCount: number;
   followingCount: number;
   postsCount: number;
+  isVerified?: boolean;
 }
 
 export interface Post {
   id: string;
+  userId: string;
   user: UserProfile;
   content: string;
   images: string[];
@@ -25,6 +27,7 @@ export interface Post {
 
 export interface Comment {
   id: string;
+  postId: string;
   user: UserProfile;
   content: string;
   likesCount: number;
@@ -34,20 +37,24 @@ export interface Comment {
 
 export interface Message {
   id: string;
+  chatId: string;
   senderId: string;
-  receiverId: string;
+  sender: UserProfile;
   content: string;
-  type: 'text' | 'image';
+  type: 'text' | 'image' | 'system';
   isRead: boolean;
   createdAt: string;
 }
 
 export interface Chat {
   id: string;
-  user: UserProfile;
-  lastMessage: string;
+  type: 'private' | 'group';
+  name?: string;
+  avatar?: string;
+  members: UserProfile[];
+  lastMessage?: Message;
   unreadCount: number;
-  lastMessageTime: string;
+  updatedAt: string;
 }
 
 export interface Notification {

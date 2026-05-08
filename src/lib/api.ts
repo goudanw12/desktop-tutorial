@@ -7,12 +7,16 @@ function getToken(): string | null {
 async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> || {}),
   };
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const isFormData = options.body instanceof FormData;
+  if (!isFormData) {
+    headers['Content-Type'] = 'application/json';
   }
 
   const response = await fetch(`${BASE_URL}${url}`, {
@@ -22,7 +26,7 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<T> {
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: '请求失败' }));
-    throw new Error(error.message || `HTTP Error: ${response.status}`);
+    throw new Error(error.error || error.message || `HTTP Error: ${response.status}`);
   }
 
   return response.json();
@@ -35,7 +39,7 @@ export async function get<T>(url: string): Promise<T> {
 export async function post<T>(url: string, data?: unknown): Promise<T> {
   return request<T>(url, {
     method: 'POST',
-    body: data ? JSON.stringify(data) : undefined,
+    body: data instanceof FormData ? data : data ? JSON.stringify(data) : undefined,
   });
 }
 

@@ -2,14 +2,22 @@ import { useState } from 'react';
 import { Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
-import type { Chat } from '@/types';
 
-const MOCK_CHATS: Chat[] = [
-  { id: 'c1', user: { id: 'u1', username: '小红', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=hong', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, lastMessage: '明天一起去爬山吧！', unreadCount: 2, lastMessageTime: new Date(Date.now() - 300000).toISOString() },
-  { id: 'c2', user: { id: 'u2', username: '阿杰', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=jie', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, lastMessage: '照片已经修好了，发给你看看', unreadCount: 0, lastMessageTime: new Date(Date.now() - 3600000).toISOString() },
-  { id: 'c3', user: { id: 'u3', username: '美美', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=mei', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, lastMessage: '那家餐厅真的很好吃！', unreadCount: 1, lastMessageTime: new Date(Date.now() - 7200000).toISOString() },
-  { id: 'c4', user: { id: 'u4', username: '大伟', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=wei', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, lastMessage: '周末有空吗？一起打球', unreadCount: 0, lastMessageTime: new Date(Date.now() - 86400000).toISOString() },
-  { id: 'c5', user: { id: 'u5', username: '小芳', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=fang', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, lastMessage: '收到啦，谢谢！', unreadCount: 0, lastMessageTime: new Date(Date.now() - 172800000).toISOString() },
+interface ChatItem {
+  id: string;
+  username: string;
+  avatar: string;
+  lastMessage: string;
+  unreadCount: number;
+  lastMessageTime: string;
+}
+
+const MOCK_CHATS: ChatItem[] = [
+  { id: 'c1', username: '小红', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=hong', lastMessage: '明天一起去爬山吧！', unreadCount: 2, lastMessageTime: new Date(Date.now() - 300000).toISOString() },
+  { id: 'c2', username: '阿杰', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=jie', lastMessage: '照片已经修好了，发给你看看', unreadCount: 0, lastMessageTime: new Date(Date.now() - 3600000).toISOString() },
+  { id: 'c3', username: '美美', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=mei', lastMessage: '那家餐厅真的很好吃！', unreadCount: 1, lastMessageTime: new Date(Date.now() - 7200000).toISOString() },
+  { id: 'c4', username: '大伟', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=wei', lastMessage: '周末有空吗？一起打球', unreadCount: 0, lastMessageTime: new Date(Date.now() - 86400000).toISOString() },
+  { id: 'c5', username: '小芳', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=fang', lastMessage: '收到啦，谢谢！', unreadCount: 0, lastMessageTime: new Date(Date.now() - 172800000).toISOString() },
 ];
 
 function formatTime(dateStr: string) {
@@ -28,7 +36,7 @@ export default function Messages() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredChats = MOCK_CHATS.filter((chat) =>
-    chat.user.username.includes(searchQuery)
+    chat.username.includes(searchQuery)
   );
 
   return (
@@ -55,8 +63,8 @@ export default function Messages() {
           >
             <div className="relative">
               <img
-                src={chat.user.avatar}
-                alt={chat.user.username}
+                src={chat.avatar}
+                alt={chat.username}
                 className="w-12 h-12 rounded-full object-cover"
               />
               {chat.unreadCount > 0 && (
@@ -67,7 +75,7 @@ export default function Messages() {
             </div>
             <div className="flex-1 min-w-0 text-left">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">{chat.user.username}</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">{chat.username}</p>
                 <span className="text-xs text-gray-400">{formatTime(chat.lastMessageTime)}</span>
               </div>
               <p className={cn(

@@ -1,72 +1,10 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import StoryBar from '@/components/StoryBar';
 import PostCard from '@/components/PostCard';
+import { get } from '@/lib/api';
 import type { Post } from '@/types';
-
-const MOCK_POSTS: Post[] = [
-  {
-    id: '1',
-    user: { id: 'u1', username: '小红', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=hong', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 },
-    content: '今天阳光真好，出去散步了！🌸 享受这美好的周末时光～',
-    images: ['https://picsum.photos/seed/p1/600/400'],
-    likesCount: 42,
-    commentsCount: 8,
-    sharesCount: 3,
-    isLiked: false,
-    isBookmarked: false,
-    createdAt: new Date(Date.now() - 1800000).toISOString(),
-  },
-  {
-    id: '2',
-    user: { id: 'u2', username: '摄影师阿杰', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=jie', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 },
-    content: '日落时分的城市天际线，每一帧都是画 🌆',
-    images: ['https://picsum.photos/seed/p2/600/400', 'https://picsum.photos/seed/p3/600/400'],
-    likesCount: 128,
-    commentsCount: 24,
-    sharesCount: 15,
-    isLiked: true,
-    isBookmarked: true,
-    createdAt: new Date(Date.now() - 7200000).toISOString(),
-  },
-  {
-    id: '3',
-    user: { id: 'u3', username: '美食家小美', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=mei', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 },
-    content: '今天尝试了一家新开的日料店，三文鱼刺身超新鲜！🍣',
-    images: ['https://picsum.photos/seed/p4/600/400', 'https://picsum.photos/seed/p5/600/400', 'https://picsum.photos/seed/p6/600/400'],
-    likesCount: 89,
-    commentsCount: 32,
-    sharesCount: 7,
-    isLiked: false,
-    isBookmarked: false,
-    createdAt: new Date(Date.now() - 14400000).toISOString(),
-  },
-  {
-    id: '4',
-    user: { id: 'u4', username: '设计师小林', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=lin', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 },
-    content: '新完成的项目设计稿，极简风格永远不过时 ✨',
-    images: ['https://picsum.photos/seed/p7/600/400', 'https://picsum.photos/seed/p8/600/400', 'https://picsum.photos/seed/p9/600/400', 'https://picsum.photos/seed/p10/600/400'],
-    likesCount: 256,
-    commentsCount: 45,
-    sharesCount: 28,
-    isLiked: false,
-    isBookmarked: false,
-    createdAt: new Date(Date.now() - 28800000).toISOString(),
-  },
-  {
-    id: '5',
-    user: { id: 'u5', username: '旅行者老王', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=wang', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 },
-    content: '云南大理的洱海，美得让人窒息 💙',
-    images: ['https://picsum.photos/seed/p11/600/400'],
-    likesCount: 312,
-    commentsCount: 56,
-    sharesCount: 42,
-    isLiked: true,
-    isBookmarked: false,
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-  },
-];
 
 function SkeletonCard() {
   return (
@@ -85,24 +23,84 @@ function SkeletonCard() {
   );
 }
 
+function mapApiPost(p: any): Post {
+  return {
+    id: p.id,
+    userId: p.user_id,
+    user: {
+      id: p.user_id,
+      username: p.username,
+      email: '',
+      avatar: p.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.user_id}`,
+      bio: '',
+      coverImage: '',
+      followersCount: 0,
+      followingCount: 0,
+      postsCount: 0,
+      isVerified: !!p.is_verified,
+    },
+    content: p.content,
+    images: typeof p.images === 'string' ? JSON.parse(p.images || '[]') : (p.images || []),
+    likesCount: p.like_count || 0,
+    commentsCount: p.comment_count || 0,
+    sharesCount: p.share_count || 0,
+    isLiked: !!p.is_liked,
+    isBookmarked: !!p.is_bookmarked,
+    createdAt: p.created_at,
+  };
+}
+
 export default function Home() {
-  const [posts, setPosts] = useState<Post[]>(MOCK_POSTS);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const observerRef = useRef<IntersectionObserver | null>(null);
+
+  const fetchPosts = useCallback(async (pageNum: number, append: boolean = false) => {
+    try {
+      const res = await get<{ success: boolean; data: { posts: any[]; pagination: { total: number; totalPages: number } } }>(`/posts/feed?page=${pageNum}&limit=10`);
+      const mapped = (res.data?.posts || []).map(mapApiPost);
+      if (append) {
+        setPosts((prev) => [...prev, ...mapped]);
+      } else {
+        setPosts(mapped);
+      }
+      const pagination = res.data?.pagination;
+      setHasMore(pagination ? pageNum < pagination.totalPages : mapped.length >= 10);
+    } catch {
+      if (!append) {
+        setPosts([]);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const loadInitial = async () => {
+      setIsLoading(true);
+      await fetchPosts(1);
+      setIsLoading(false);
+    };
+    loadInitial();
+  }, [fetchPosts]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    await new Promise((r) => setTimeout(r, 1000));
+    setPage(1);
+    await fetchPosts(1);
     setIsRefreshing(false);
-  }, []);
+  }, [fetchPosts]);
 
   const handleLoadMore = useCallback(async () => {
-    if (isLoadingMore) return;
+    if (isLoadingMore || !hasMore) return;
     setIsLoadingMore(true);
-    await new Promise((r) => setTimeout(r, 1000));
+    const nextPage = page + 1;
+    setPage(nextPage);
+    await fetchPosts(nextPage, true);
     setIsLoadingMore(false);
-  }, [isLoadingMore]);
+  }, [isLoadingMore, hasMore, page, fetchPosts]);
 
   const lastPostRef = useCallback(
     (node: HTMLDivElement | null) => {
@@ -127,6 +125,10 @@ export default function Home() {
     );
   };
 
+  const handlePostUpdate = (postId: string, updates: Partial<Post>) => {
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...updates } : p)));
+  };
+
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-4 md:hidden">
@@ -147,20 +149,36 @@ export default function Home() {
 
       <StoryBar />
 
-      <div className="space-y-4">
-        {posts.map((post, idx) => (
-          <div key={post.id} ref={idx === posts.length - 1 ? lastPostRef : undefined}>
-            <PostCard post={post} onLike={handleLike} onBookmark={handleBookmark} />
-          </div>
-        ))}
+      {isLoading ? (
+        <div className="space-y-4">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {posts.map((post, idx) => (
+            <div key={post.id} ref={idx === posts.length - 1 ? lastPostRef : undefined}>
+              <PostCard post={post} onLike={handleLike} onBookmark={handleBookmark} onUpdate={handlePostUpdate} />
+            </div>
+          ))}
 
-        {isLoadingMore && (
-          <>
-            <SkeletonCard />
-            <SkeletonCard />
-          </>
-        )}
-      </div>
+          {isLoadingMore && (
+            <>
+              <SkeletonCard />
+              <SkeletonCard />
+            </>
+          )}
+
+          {!hasMore && posts.length > 0 && (
+            <div className="text-center py-4 text-gray-400 text-sm">没有更多动态了</div>
+          )}
+
+          {!isLoading && posts.length === 0 && (
+            <div className="text-center py-12 text-gray-400 text-sm">暂无动态，去关注一些人或发布第一条动态吧～</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

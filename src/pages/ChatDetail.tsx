@@ -6,13 +6,13 @@ import ChatBubble from '@/components/ChatBubble';
 import type { Message } from '@/types';
 
 const MOCK_MESSAGES: Message[] = [
-  { id: 'm1', senderId: 'u1', receiverId: 'me', content: '嗨！最近怎么样？', type: 'text', isRead: true, createdAt: new Date(Date.now() - 3600000).toISOString() },
-  { id: 'm2', senderId: 'me', receiverId: 'u1', content: '还不错！最近在忙一个新项目', type: 'text', isRead: true, createdAt: new Date(Date.now() - 3500000).toISOString() },
-  { id: 'm3', senderId: 'u1', receiverId: 'me', content: '听起来很棒！是什么项目？', type: 'text', isRead: true, createdAt: new Date(Date.now() - 3400000).toISOString() },
-  { id: 'm4', senderId: 'me', receiverId: 'u1', content: '一个社交应用，用 React + TypeScript 做的', type: 'text', isRead: true, createdAt: new Date(Date.now() - 3300000).toISOString() },
-  { id: 'm5', senderId: 'u1', receiverId: 'me', content: '太酷了！能给我看看截图吗？', type: 'text', isRead: true, createdAt: new Date(Date.now() - 3200000).toISOString() },
-  { id: 'm6', senderId: 'me', receiverId: 'u1', content: 'https://picsum.photos/seed/chat1/400/300', type: 'image', isRead: true, createdAt: new Date(Date.now() - 3100000).toISOString() },
-  { id: 'm7', senderId: 'u1', receiverId: 'me', content: '设计很漂亮！明天一起去爬山吧！', type: 'text', isRead: false, createdAt: new Date(Date.now() - 300000).toISOString() },
+  { id: 'm1', chatId: 'c1', senderId: 'u1', sender: { id: 'u1', username: '小红', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=hong', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, content: '嗨！最近怎么样？', type: 'text', isRead: true, createdAt: new Date(Date.now() - 3600000).toISOString() },
+  { id: 'm2', chatId: 'c1', senderId: 'me', sender: { id: 'me', username: '我', email: '', avatar: '', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, content: '还不错！最近在忙一个新项目', type: 'text', isRead: true, createdAt: new Date(Date.now() - 3500000).toISOString() },
+  { id: 'm3', chatId: 'c1', senderId: 'u1', sender: { id: 'u1', username: '小红', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=hong', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, content: '听起来很棒！是什么项目？', type: 'text', isRead: true, createdAt: new Date(Date.now() - 3400000).toISOString() },
+  { id: 'm4', chatId: 'c1', senderId: 'me', sender: { id: 'me', username: '我', email: '', avatar: '', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, content: '一个社交应用，用 React + TypeScript 做的', type: 'text', isRead: true, createdAt: new Date(Date.now() - 3300000).toISOString() },
+  { id: 'm5', chatId: 'c1', senderId: 'u1', sender: { id: 'u1', username: '小红', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=hong', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, content: '太酷了！能给我看看截图吗？', type: 'text', isRead: true, createdAt: new Date(Date.now() - 3200000).toISOString() },
+  { id: 'm6', chatId: 'c1', senderId: 'me', sender: { id: 'me', username: '我', email: '', avatar: '', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, content: 'https://picsum.photos/seed/chat1/400/300', type: 'image', isRead: true, createdAt: new Date(Date.now() - 3100000).toISOString() },
+  { id: 'm7', chatId: 'c1', senderId: 'u1', sender: { id: 'u1', username: '小红', email: '', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=hong', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 }, content: '设计很漂亮！明天一起去爬山吧！', type: 'text', isRead: false, createdAt: new Date(Date.now() - 300000).toISOString() },
 ];
 
 const CHAT_USER = {
@@ -32,8 +32,9 @@ export default function ChatDetail() {
     if (!inputValue.trim()) return;
     const newMessage: Message = {
       id: `m${Date.now()}`,
+      chatId: id || 'c1',
       senderId: 'me',
-      receiverId: id || 'u1',
+      sender: { id: 'me', username: '我', email: '', avatar: '', bio: '', coverImage: '', followersCount: 0, followingCount: 0, postsCount: 0 },
       content: inputValue,
       type: 'text',
       isRead: false,

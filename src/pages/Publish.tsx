@@ -2,32 +2,72 @@ import { useState, useRef } from 'react';
 import { Image, Smile, Hash, MapPin, X, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { post } from '@/lib/api';
+
+interface ImageItem {
+  file: File;
+  preview: string;
+}
 
 export default function Publish() {
   const navigate = useNavigate();
   const [content, setContent] = useState('');
-  const [images, setImages] = useState<string[]>([]);
+  const [images, setImages] = useState<ImageItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageUpload = () => {
-    const newImages = [
-      ...images,
-      `https://picsum.photos/seed/upload${Date.now()}/400/400`,
-    ];
-    setImages(newImages.slice(0, 9));
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newImages: ImageItem[] = [];
+    const remaining = 9 - images.length;
+
+    Array.from(files)
+      .slice(0, remaining)
+      .forEach((file) => {
+        if (file.type.startsWith('image/')) {
+          const preview = URL.createObjectURL(file);
+          newImages.push({ file, preview });
+        }
+      });
+
+    setImages((prev) => [...prev, ...newImages].slice(0, 9));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleRemoveImage = (idx: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== idx));
+    setImages((prev) => {
+      const item = prev[idx];
+      if (item) URL.revokeObjectURL(item.preview);
+      return prev.filter((_, i) => i !== idx);
+    });
   };
 
   const handleSubmit = async () => {
     if (!content.trim() && images.length === 0) return;
     setIsSubmitting(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setIsSubmitting(false);
-    navigate('/');
+    setError('');
+
+    try {
+      const formData = new FormData();
+      if (content.trim()) {
+        formData.append('content', content.trim());
+      }
+      images.forEach((img) => {
+        formData.append('images', img.file);
+      });
+
+      await post('/posts', formData);
+      images.forEach((img) => URL.revokeObjectURL(img.preview));
+      navigate('/');
+    } catch (err: any) {
+      setError(err.message || '发布失败，请重试');
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -51,7 +91,7 @@ export default function Publish() {
           <div className="grid grid-cols-3 gap-2 mt-3">
             {images.map((img, idx) => (
               <div key={idx} className="relative aspect-square rounded-xl overflow-hidden group">
-                <img src={img} alt="" className="w-full h-full object-cover" />
+                <img src={img.preview} alt="" className="w-full h-full object-cover" />
                 <button
                   onClick={() => handleRemoveImage(idx)}
                   className="absolute top-1 right-1 w-6 h-6 bg-black/50 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
@@ -62,13 +102,17 @@ export default function Publish() {
             ))}
             {images.length < 9 && (
               <button
-                onClick={handleImageUpload}
+                onClick={() => fileInputRef.current?.click()}
                 className="aspect-square rounded-xl border-2 border-dashed border-gray-300 dark:border-dark-600 flex items-center justify-center text-gray-400 hover:text-primary-500 hover:border-primary-500 transition-all"
               >
                 <Image className="w-6 h-6" />
               </button>
             )}
           </div>
+        )}
+
+        {error && (
+          <p className="mt-2 text-sm text-red-500">{error}</p>
         )}
 
         <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 dark:border-dark-700">
@@ -79,7 +123,7 @@ export default function Publish() {
               accept="image/*"
               multiple
               className="hidden"
-              onChange={handleImageUpload}
+              onChange={handleImageSelect}
             />
             <button
               onClick={() => fileInputRef.current?.click()}
