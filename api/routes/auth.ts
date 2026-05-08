@@ -71,17 +71,17 @@ router.post('/login', (req: Request, res: Response): void => {
 })
 
 router.post('/sms/send', (req: Request, res: Response): void => {
-  const { phone } = req.body
+  const { phone, code } = req.body
 
   if (!phone || !/^1\d{10}$/.test(phone)) {
     res.status(400).json({ success: false, error: '请输入正确的手机号' })
     return
   }
 
-  const code = String(Math.floor(100000 + Math.random() * 900000))
-  smsCodes.set(phone, { code, expires: Date.now() + 5 * 60 * 1000 })
+  const smsCode = code || String(Math.floor(100000 + Math.random() * 900000))
+  smsCodes.set(phone, { code: smsCode, expires: Date.now() + 5 * 60 * 1000 })
 
-  console.log(`[SMS] 手机号 ${phone} 验证码: ${code}`)
+  console.log(`[SMS] 手机号 ${phone} 验证码: ${smsCode}`)
 
   res.json({ success: true, data: { message: '验证码已发送' } })
 })

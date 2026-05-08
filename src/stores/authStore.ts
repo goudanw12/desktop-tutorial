@@ -10,7 +10,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   loginWithPhone: (phone: string, code: string) => Promise<void>;
   loginWithQQ: (qqOpenId: string, nickname: string, avatar?: string) => Promise<void>;
-  sendSmsCode: (phone: string) => Promise<void>;
+  sendSmsCode: (phone: string) => Promise<string>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   fetchMe: () => Promise<void>;
@@ -78,8 +78,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  sendSmsCode: async (phone: string) => {
-    await post<{ success: boolean; data: { message: string } }>('/auth/sms/send', { phone });
+  sendSmsCode: async (phone: string): Promise<string> => {
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    await post<{ success: boolean; data: { message: string } }>('/auth/sms/send', { phone, code });
+    return code;
   },
 
   register: async (username: string, email: string, password: string) => {
