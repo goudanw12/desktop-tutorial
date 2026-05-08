@@ -119,6 +119,9 @@ export default function Messages() {
       await apiPost(`/chats/${chatId}/hide`, {});
       setChats((prev) => prev.filter((c) => c.id !== chatId));
       setMenuChatId(null);
+      if (window.location.pathname === `/chat/${chatId}`) {
+        navigate('/messages');
+      }
     } catch {}
   };
 
@@ -128,6 +131,9 @@ export default function Messages() {
       await del(`/chats/${chatId}/hide`);
       setChats((prev) => prev.filter((c) => c.id !== chatId));
       setMenuChatId(null);
+      if (window.location.pathname === `/chat/${chatId}`) {
+        navigate('/messages');
+      }
     } catch {}
   };
 
