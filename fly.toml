@@ -1,5 +1,5 @@
 app = "social-app-backend"
-primary_region = "nrt"
+primary_region = "sin"
 
 [build]
 
