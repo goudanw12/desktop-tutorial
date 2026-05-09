@@ -28,10 +28,15 @@
         "./src/*"
       ]
     },
-    "types": []
+    "types": [],
+    "ignoreDeprecations": "5.0"
   },
   "include": [
-    "src",
-    "api"
+    "src"
+  ],
+  "exclude": [
+    "api",
+    "node_modules",
+    "dist"
   ]
 }

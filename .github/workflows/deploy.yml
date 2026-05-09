@@ -6,9 +6,21 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     
     steps:
     - name: Checkout code
@@ -27,18 +39,22 @@ jobs:
       run: npm run build
       env:
         VITE_API_URL: ${{ secrets.VITE_API_URL || '/api' }}
+        GITHUB_PAGES: true
 
     - name: Build backend
       run: npm run build:server
 
-    - name: Deploy to Cloudflare Pages
-      uses: cloudflare/pages-action@v1
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
       with:
-        apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        projectName: social-app
-        directory: dist
-        gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+        path: './dist'
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
 
     - name: Deploy to Render (Backend)
       if: github.ref == 'refs/heads/main'
@@ -50,4 +66,4 @@ jobs:
         curl -X POST "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys" \
           -H "Authorization: Bearer $RENDER_API_KEY" \
           -H "Content-Type: application/json" \
-          -d '{"clearCache": true}'
+          -d '{"clearCache": true}' || echo "Render deployment skipped (secrets not configured)"

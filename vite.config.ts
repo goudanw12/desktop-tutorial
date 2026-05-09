@@ -14,6 +14,7 @@ export default defineConfig({
     }),
     tsconfigPaths(),
   ],
+  base: process.env.GITHUB_PAGES ? '/social-app/' : '/',
   server: {
     host: '0.0.0.0',
     port: 5173,
