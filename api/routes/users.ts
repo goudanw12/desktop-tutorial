@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express'
 import crypto from 'crypto'
 import db from '../database.js'
-import { authMiddleware } from '../middleware/auth.js'
+import { authMiddleware, optionalAuth } from '../middleware/auth.js'
 import { upload } from '../middleware/upload.js'
 
 const router = Router()
@@ -181,20 +181,35 @@ router.get('/:userId/following', (req: Request, res: Response): void => {
   })
 })
 
-router.get('/:userId/posts', (req: Request, res: Response): void => {
+router.get('/:userId/posts', optionalAuth, (req: Request, res: Response): void => {
   const { userId } = req.params
+  const currentUserId = req.user?.id
   const page = parseInt(req.query.page as string) || 1
   const limit = parseInt(req.query.limit as string) || 20
   const offset = (page - 1) * limit
 
-  const posts = db.prepare(`
-    SELECT p.*, u.username, u.avatar, u.is_verified
-    FROM posts p
-    JOIN users u ON p.user_id = u.id
-    WHERE p.user_id = ?
-    ORDER BY p.created_at DESC
-    LIMIT ? OFFSET ?
-  `).all(userId, limit, offset) as any[]
+  let posts: any[]
+  if (currentUserId) {
+    posts = db.prepare(`
+      SELECT p.*, u.username, u.avatar, u.is_verified,
+        (SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ? AND type = 'post') as is_liked,
+        (SELECT COUNT(*) FROM bookmarks WHERE post_id = p.id AND user_id = ?) as is_bookmarked
+      FROM posts p
+      JOIN users u ON p.user_id = u.id
+      WHERE p.user_id = ?
+      ORDER BY p.created_at DESC
+      LIMIT ? OFFSET ?
+    `).all(currentUserId, currentUserId, userId, limit, offset) as any[]
+  } else {
+    posts = db.prepare(`
+      SELECT p.*, u.username, u.avatar, u.is_verified
+      FROM posts p
+      JOIN users u ON p.user_id = u.id
+      WHERE p.user_id = ?
+      ORDER BY p.created_at DESC
+      LIMIT ? OFFSET ?
+    `).all(userId, limit, offset) as any[]
+  }
 
   const total = db.prepare('SELECT COUNT(*) as count FROM posts WHERE user_id = ?').get(userId) as { count: number }
 
@@ -202,6 +217,9 @@ router.get('/:userId/posts', (req: Request, res: Response): void => {
     ...post,
     images: JSON.parse(post.images || '[]'),
     tags: JSON.parse(post.tags || '[]'),
+    is_liked: !!post.is_liked,
+    is_bookmarked: !!post.is_bookmarked,
+    is_owner: currentUserId ? post.user_id === currentUserId : false,
   }))
 
   res.json({
