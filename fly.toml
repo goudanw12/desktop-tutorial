@@ -1,0 +1,27 @@
+app = "social-app-backend"
+primary_region = "hkg"
+
+[build]
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8080"
+  DATABASE_PATH = "/data/social.db"
+  UPLOADS_DIR = "/data/uploads"
+  CORS_ORIGIN = "https://goudanw12.github.io/desktop-tutorial"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[mounts]
+  source = "data"
+  destination = "/data"
