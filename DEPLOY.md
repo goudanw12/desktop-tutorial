@@ -62,6 +62,7 @@ git push -u origin main
 | Build Command | `npm install && npm run build:server` |
 | Start Command | `npm start` |
 | Plan | `Free` |
+| Node Version | `18`（在 Advanced 中设置）|
 
 4. 点击 **Advanced** 添加环境变量：
 
@@ -180,6 +181,9 @@ git push
 
 ### Q: 图片上传后无法显示？
 A: 确保 `UPLOADS_DIR` 环境变量设置为 `/data/uploads`，且 Render 磁盘已正确挂载。
+
+### Q: 构建时出现 "ignoreDeprecations" 错误？
+A: 这是 TypeScript 版本兼容性问题。已在 `api/tsconfig.json` 中添加了 `"ignoreDeprecations": "5.0"` 配置。如果仍然出错，请检查 Render 的 Node.js 版本是否为 18 或更高。
 
 ---
 

@@ -4,6 +4,8 @@ services:
     runtime: node
     plan: free
     region: singapore
+    buildFilter:
+      nodeVersion: "18"
     buildCommand: npm install && npm run build:server
     startCommand: node api/dist/server.js
     envVars:

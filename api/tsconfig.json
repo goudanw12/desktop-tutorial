@@ -13,7 +13,8 @@
     "declaration": false,
     "declarationMap": false,
     "sourceMap": false,
-    "types": ["node", "express"]
+    "types": ["node", "express"],
+    "ignoreDeprecations": "5.0"
   },
   "include": ["./**/*.ts"],
   "exclude": ["node_modules", "dist"]
