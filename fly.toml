@@ -1,5 +1,5 @@
 app = "social-app-backend"
-primary_region = "hkg"
+primary_region = "sin"
 
 [build]
 
