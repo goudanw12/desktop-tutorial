@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_PATH=/app/data/social.db
+      - UPLOADS_DIR=/app/uploads
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key}
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+    restart: unless-stopped
