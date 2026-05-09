@@ -28,7 +28,8 @@
         "./src/*"
       ]
     },
-    "types": []
+    "types": [],
+    "ignoreDeprecations": "5.0"
   },
   "include": [
     "src"

@@ -4,8 +4,6 @@ services:
     runtime: node
     plan: free
     region: singapore
-    buildFilter:
-      nodeVersion: "18"
     buildCommand: npm install && npm run build:server
     startCommand: node api/dist/server.js
     envVars:
@@ -21,6 +19,8 @@ services:
         value: /data/uploads
       - key: CORS_ORIGIN
         value: https://desktop-tutorial.244628270.workers.dev
+      - key: NODE_VERSION
+        value: "18"
     disk:
       name: data
       mountPath: /data

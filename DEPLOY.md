@@ -183,7 +183,7 @@ git push
 A: 确保 `UPLOADS_DIR` 环境变量设置为 `/data/uploads`，且 Render 磁盘已正确挂载。
 
 ### Q: 构建时出现 "ignoreDeprecations" 错误？
-A: 这是 TypeScript 版本兼容性问题。已在 `api/tsconfig.json` 中添加了 `"ignoreDeprecations": "5.0"` 配置。如果仍然出错，请检查 Render 的 Node.js 版本是否为 18 或更高。
+A: 这是 TypeScript 版本兼容性问题。已在 `tsconfig.json` 和 `api/tsconfig.json` 中都添加了 `"ignoreDeprecations": "5.0"` 配置。如果仍然出错，请检查 Render 的 Node.js 版本是否为 18 或更高。
 
 ---
 
