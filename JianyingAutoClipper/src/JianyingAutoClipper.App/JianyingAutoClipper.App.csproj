@@ -1,0 +1,29 @@
+
+&lt;Project Sdk="Microsoft.NET.Sdk"&gt;
+
+  &lt;PropertyGroup&gt;
+    &lt;OutputType&gt;WinExe&lt;/OutputType&gt;
+    &lt;TargetFramework&gt;net8.0&lt;/TargetFramework&gt;
+    &lt;ImplicitUsings&gt;enable&lt;/ImplicitUsings&gt;
+    &lt;Nullable&gt;enable&lt;/Nullable&gt;
+    &lt;BuiltInComInteropSupport Condition="$([MSBuild]::IsOSPlatform('Windows'))"&gt;true&lt;/BuiltInComInteropSupport&gt;
+    &lt;ApplicationManifest&gt;app.manifest&lt;/ApplicationManifest&gt;
+    &lt;ApplicationIcon&gt;Assets\avalonia-logo.ico&lt;/ApplicationIcon&gt;
+  &lt;/PropertyGroup&gt;
+
+  &lt;ItemGroup&gt;
+    &lt;PackageReference Include="Avalonia" Version="11.1.0" /&gt;
+    &lt;PackageReference Include="Avalonia.Desktop" Version="11.1.0" /&gt;
+    &lt;PackageReference Include="Avalonia.Themes.Fluent" Version="11.1.0" /&gt;
+    &lt;PackageReference Include="Avalonia.Fonts.Inter" Version="11.1.0" /&gt;
+    &lt;PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" /&gt;
+    &lt;PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" /&gt;
+  &lt;/ItemGroup&gt;
+
+  &lt;ItemGroup&gt;
+    &lt;ProjectReference Include="..\JianyingAutoClipper.Core\JianyingAutoClipper.Core.csproj" /&gt;
+    &lt;ProjectReference Include="..\JianyingAutoClipper.Infrastructure\JianyingAutoClipper.Infrastructure.csproj" /&gt;
+  &lt;/ItemGroup&gt;
+
+&lt;/Project&gt;
+

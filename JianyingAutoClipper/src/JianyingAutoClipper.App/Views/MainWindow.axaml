@@ -1,0 +1,102 @@
+
+&lt;Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+        x:Class="JianyingAutoClipper.App.Views.MainWindow"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="剪映自动剪辑"&gt;
+
+    &lt;Design.DataContext&gt;
+        &lt;vm:MainWindowViewModel xmlns:vm="using:JianyingAutoClipper.App.ViewModels"/&gt;
+    &lt;/Design.DataContext&gt;
+
+    &lt;Grid RowDefinitions="Auto,*,Auto"&gt;
+        &lt;Menu Grid.Row="0"&gt;
+            &lt;MenuItem Header="_文件"&gt;
+                &lt;MenuItem Header="_新建任务" Command="{Binding CreateNewTaskCommand}"/&gt;
+                &lt;MenuItem Header="_新建模板" Command="{Binding CreateNewTemplateCommand}"/&gt;
+                &lt;Separator/&gt;
+                &lt;MenuItem Header="_退出"/&gt;
+            &lt;/MenuItem&gt;
+            &lt;MenuItem Header="_工具"&gt;
+                &lt;MenuItem Header="_启动剪映" Command="{Binding LaunchJianyingCommand}"/&gt;
+            &lt;/MenuItem&gt;
+        &lt;/Menu&gt;
+
+        &lt;Grid Grid.Row="1" ColumnDefinitions="300,*" Margin="8"&gt;
+            &lt;Border Grid.Column="0" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4" Padding="8"&gt;
+                &lt;Grid RowDefinitions="Auto,*"&gt;
+                    &lt;TextBlock Grid.Row="0" Text="任务列表" FontWeight="Bold" Margin="0,0,0,8"/&gt;
+                    &lt;ListBox Grid.Row="1" ItemsSource="{Binding Tasks}" SelectedItem="{Binding SelectedTask}"&gt;
+                        &lt;ListBox.ItemTemplate&gt;
+                            &lt;DataTemplate&gt;
+                                &lt;StackPanel Margin="0,4"&gt;
+                                    &lt;TextBlock Text="{Binding Name}" FontWeight="Medium"/&gt;
+                                    &lt;TextBlock Text="{Binding Status}" FontSize="12" Opacity="0.7"/&gt;
+                                    &lt;ProgressBar Value="{Binding Progress}" Maximum="100" Height="4" Margin="0,4,0,0"/&gt;
+                                &lt;/StackPanel&gt;
+                            &lt;/DataTemplate&gt;
+                        &lt;/ListBox.ItemTemplate&gt;
+                    &lt;/ListBox&gt;
+                &lt;/Grid&gt;
+            &lt;/Border&gt;
+
+            &lt;Border Grid.Column="1" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4" Padding="16" Margin="8,0,0,0"&gt;
+                &lt;Grid RowDefinitions="Auto,*,Auto"&gt;
+                    &lt;StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="8" Margin="0,0,0,16"&gt;
+                        &lt;Button Content="开始" Command="{Binding StartTaskCommand}" IsEnabled="{Binding SelectedTask}" Background="#165DFF" Foreground="White" Padding="16,8"/&gt;
+                        &lt;Button Content="暂停" Command="{Binding PauseTaskCommand}" IsEnabled="{Binding SelectedTask}" Padding="16,8"/&gt;
+                        &lt;Button Content="停止" Command="{Binding StopTaskCommand}" IsEnabled="{Binding SelectedTask}" Padding="16,8"/&gt;
+                    &lt;/StackPanel&gt;
+
+                    &lt;ScrollViewer Grid.Row="1"&gt;
+                        &lt;StackPanel Spacing="16"&gt;
+                            &lt;Border Background="#F5F5F5" CornerRadius="4" Padding="12"&gt;
+                                &lt;Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto"&gt;
+                                    &lt;TextBlock Grid.Row="0" Grid.Column="0" Text="剪映状态:" FontWeight="Medium" Margin="0,0,8,0"/&gt;
+                                    &lt;StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Spacing="16"&gt;
+                                        &lt;Ellipse Width="10" Height="10" Fill="{Binding IsJianyingInstalled, Converter={StaticResource BooleanToBrushConverter}, ConverterParameter=#4CAF50|#F44336}" VerticalAlignment="Center"/&gt;
+                                        &lt;TextBlock Text="{Binding IsJianyingInstalled, Converter={StaticResource BooleanToStringConverter}, ConverterParameter=已安装|未安装}"/&gt;
+                                    &lt;/StackPanel&gt;
+                                    
+                                    &lt;TextBlock Grid.Row="1" Grid.Column="0" Text="运行状态:" FontWeight="Medium" Margin="0,8,8,0"/&gt;
+                                    &lt;StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="16" Margin="0,8,0,0"&gt;
+                                        &lt;Ellipse Width="10" Height="10" Fill="{Binding IsJianyingRunning, Converter={StaticResource BooleanToBrushConverter}, ConverterParameter=#4CAF50|#9E9E9E}" VerticalAlignment="Center"/&gt;
+                                        &lt;TextBlock Text="{Binding IsJianyingRunning, Converter={StaticResource BooleanToStringConverter}, ConverterParameter=运行中|未运行}"/&gt;
+                                    &lt;/StackPanel&gt;
+                                &lt;/Grid&gt;
+                            &lt;/Border&gt;
+
+                            &lt;TextBlock Text="任务详情" FontWeight="Bold"/&gt;
+                            
+                            &lt;Border Background="#F9F9F9" CornerRadius="4" Padding="12"&gt;
+                                &lt;Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto"&gt;
+                                    &lt;TextBlock Grid.Row="0" Grid.Column="0" Text="任务名称:" FontWeight="Medium" Margin="0,0,8,0"/&gt;
+                                    &lt;TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedTask.Name}"/&gt;
+                                    
+                                    &lt;TextBlock Grid.Row="1" Grid.Column="0" Text="状态:" FontWeight="Medium" Margin="0,8,8,0"/&gt;
+                                    &lt;TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedTask.Status}" Margin="0,8,0,0"/&gt;
+                                    
+                                    &lt;TextBlock Grid.Row="2" Grid.Column="0" Text="进度:" FontWeight="Medium" Margin="0,8,8,0"/&gt;
+                                    &lt;TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedTask.Progress, StringFormat='{}{0:F1}%'}" Margin="0,8,0,0"/&gt;
+                                    
+                                    &lt;TextBlock Grid.Row="3" Grid.Column="0" Text="视频数量:" FontWeight="Medium" Margin="0,8,8,0"/&gt;
+                                    &lt;TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedTask.VideoFiles.Count}" Margin="0,8,0,0"/&gt;
+                                &lt;/Grid&gt;
+                            &lt;/Border&gt;
+                        &lt;/StackPanel&gt;
+                    &lt;/ScrollViewer&gt;
+                &lt;/Grid&gt;
+            &lt;/Border&gt;
+        &lt;/Grid&gt;
+
+        &lt;StatusBar Grid.Row="2"&gt;
+            &lt;StatusBarItem&gt;
+                &lt;TextBlock Text="{Binding StatusMessage}"/&gt;
+            &lt;/StatusBarItem&gt;
+        &lt;/StatusBar&gt;
+    &lt;/Grid&gt;
+&lt;/Window&gt;
+
